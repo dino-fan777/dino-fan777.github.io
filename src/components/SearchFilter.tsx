@@ -1,12 +1,12 @@
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface SearchFilterProps {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   selectedCategories: string[];
-  setSelectedCategories: (categories: string[]) => void;
+  setSelectedCategories: React.Dispatch<React.SetStateAction<string[]>>;
   categories: string[];
 }
 
@@ -15,15 +15,15 @@ export function SearchFilter({
   setSearchTerm,
   selectedCategories,
   setSelectedCategories,
-  categories
+  categories,
 }: SearchFilterProps) {
-  const handleCategoryChange = (category: string) => {
-    setSelectedCategories(prev => 
+  const handleCategoryChange = (category: string): void => {
+    setSelectedCategories((prev: string[]) =>
       prev.includes(category)
-        ? prev.filter(c => c !== category)
+        ? prev.filter((c: string) => c !== category)
         : [...prev, category]
-    )
-  }
+    );
+  };
 
   return (
     <div className="mb-4 flex flex-col sm:flex-row gap-4">
@@ -42,11 +42,12 @@ export function SearchFilter({
               checked={selectedCategories.includes(category)}
               onCheckedChange={() => handleCategoryChange(category)}
             />
-            <Label htmlFor={`category-${category}`} className="text-sm">{category}</Label>
+            <Label htmlFor={`category-${category}`} className="text-sm">
+              {category}
+            </Label>
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }
-
