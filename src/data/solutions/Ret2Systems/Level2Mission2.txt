@@ -1,0 +1,57 @@
+Instructions explained:
+
+0x400867:  push    rbp
+0x400868:  mov     rbp, rsp
+0x40086b:  mov     qword [rbp-0x18], rdi    ;  first argument after calling the fuction, valid_password(test)
+0x40086f:  mov     dword [rbp-0x4], 0x0     ;  counter
+0x400876:  jmp     0x4008c8
+0x400878:  mov     edx, dword [rbp-0x4]
+0x40087b:  mov     rax, qword [rbp-0x18]    ; has rdi so first argument of the fuction
+0x40087f:  add     rax, rdx                 ; adds the input password with 0?
+0x400882:  movzx   eax, byte [rax]          ; took the first byte from the input, in this case ABCD is input and EAX = A
+0x400885:  mov     ecx, eax                 ; with "aaaa" input the rax is 0x61
+0x400887:  mov     eax, dword [rbp-0x4]     ; rax back to 0(because ox4 is the counter so i starts at 0)
+0x40088a:  mov     edx, 0x54                ; looks to me a hard coded value
+0x40088f:  imul    eax, edx                 ; first iteration 0 * 0x54
+0x400892:  xor     ecx, eax                 ; 0 XOR a (61) (stored in ecx)
+0x400894:  mov     edx, dword [rbp-0x4]     ; move counter to edx (0)
+0x400897:  mov     rax, qword [rbp-0x18]    ; rax has address of the input (aaaa)
+0x40089b:  add     rax, rdx                 ; adds counter with address of input (aaaa)
+0x40089e:  mov     edx, ecx                 ; first letter of input goes to edx (previous counter)
+0x4008a0:  mov     byte [rax], dl           ; move dl (one byte and first byte of input) to adress rax is pointing?
+0x4008a2:  mov     edx, dword [rbp-0x4]     ; again counter goes to 0 in the first iteration
+0x4008a5:  mov     rax, qword [rbp-0x18]    ; address of "aaaa" is stored in rax
+0x4008a9:  add     rax, rdx                 ; 0 + adrress of "aaaa" is stored in rax
+0x4008ac:  movzx   edx, byte [rax]          ; takes a byte where rax is pointing ("a") and stores in edx
+0x4008af:  mov     eax, dword [rbp-0x4]     ; sets rax to counter
+0x4008b2:  movzx   eax, byte [rax+0x601080] ; it points to the encrypted password 0x601080
+0x4008b9:  cmp     dl, al                   ; encrypted pass: u:ÀÈ3ÏÌ.ÌÇì°7ëpæc§
+0x4008bb:  je      0x4008c4                 ; jumps where counter +1 
+0x4008bd:  mov     eax, 0x0                 ; return 0, failure
+0x4008c2:  jmp     0x4008d3
+0x4008c4:  add     dword [rbp-0x4], 0x1     ; counter +1
+0x4008c8:  cmp     dword [rbp-0x4], 0x14    ; i<14
+0x4008cc:  jbe     0x400878
+0x4008ce:  mov     eax, 0x1                 ; return 1, sucess
+0x4008d3:  pop     rbp
+0x4008d4:  retn    
+
+Decrypting encrypted password:
+
+u:ÀÈ3ÏÌ.ÌÇì°7ëpæc§
+
+(is in Unicode and counter is at max 14)
+
+
+Original Byte | Counter | Encrypted Byte | Operation                           | Result Explanation              
+--------------------------------------------------------------------------------------------------------------
+x             | 0       | u              | x XOR (0 * 0x54) = u               | u XOR itself yields u          
+x             | 1       | :              | x XOR (1 * 0x54) = :               | x XOR 0x54 = : => 0x54 XOR 0x3A => 0x6E => n
+x             | 2       | À              | x XOR (2 * 0x54) = À               | x XOR 2*0x54 = À => 0xA8 XOR 0xC0 = x => 0x68 => h                   
+x             | 3       | È              | x XOR (3 * 0x54) = È               | x XOR 3*0x54 = È => 0xFC XOR 0xC8 = x => 0x34 => 4                               
+x             | 4       | 3              | x XOR (4 * 0x54) = 3               | x XOR 4*0x54 = 3 => 0x150 XOR 0x33 = x => 0x163 => 0x63=> c                             
+x             | 5       | Ï              | x XOR (5 * 0x54) = Ï               | x XOR 5*0x54 = Ï => 0x1A4 XOR 0xCF = x => 0x16B => 0x6B=> k                                                              
+
+Password: unh4ck (first 6 bytes)
+
+Time to automatize the problem with a python script.

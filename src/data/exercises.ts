@@ -7,7 +7,8 @@ export interface Exercise {
   author: string;
   impact: string;
   description: string;
-  solution: string;
+  solutionFilePath: string; // New field for the solution file path
+  scriptFilePath?: string;
 }
 
 export interface ExerciseProvider {
@@ -18,47 +19,89 @@ export interface ExerciseProvider {
 
 export const exerciseProviders: ExerciseProvider[] = [
   {
-    id: 1,
-    name: 'HackTheBox',
+  id: 1,
+  name: 'Ret2Systems Wargames',
+  exercises:[
+    {
+      id: 101,
+      title: 'Reverse Engineering Level 2',
+      categories: ['Pwn', 'Reverse Engineering'],
+      difficulty: 'Easy',
+      vulnerability: 'Insecure Authentication',
+      author: 'Ret2Systems',
+      impact: 'High',
+      description: 'Simple XOR cipher to decrypt the flag.',
+      solutionFilePath: '/src/data/solutions/Ret2Systems/Level2Mission2.txt',
+      scriptFilePath: '/src/data/solutions/Ret2Systems/level2mission2.py'
+    },
+    {
+      id: 102,
+      title: 'Memory Corruption Level 1',
+      categories: ['Pwn', 'Reverse Engineering'],
+      difficulty: 'Easy',
+      vulnerability: 'Buffer Overflow',
+      author: 'Ret2Systems',
+      impact: 'High',
+      description: 'Simple buffer overflow to get the flag. Interesting info about strcmp() and fgets().',
+      solutionFilePath: '/src/data/solutions/Ret2Systems/Level3Mission1.txt'
+    },
+    {
+      id: 103,
+      title: 'Memory Corruption Level 2',
+      categories: ['Pwn', 'Reverse Engineering'],
+      difficulty: 'Easy',
+      vulnerability: 'Buffer Overflow',
+      author: 'Ret2Systems',
+      impact: 'High',
+      description: 'Buffer overflow combined with manipulation of the binary execution.',
+      solutionFilePath: '/src/data/solutions/Ret2Systems/Level3Mission2.txt',
+      scriptFilePath: '/src/data/solutions/Ret2Systems/level3Mission2.py'
+    },
+    {
+      id: 104,
+      title: 'Shellcoding Level 1',
+      categories: ['Pwn', 'Reverse Engineering'],
+      difficulty: 'Easy',
+      vulnerability: 'Bufferoverflow + Executable Stack',
+      author: 'Ret2Systems',
+      impact: 'High',
+      description: 'Shellcode combined with a bufferoverflow.',
+      solutionFilePath: '/src/data/solutions/Ret2Systems/Level4Mission1.txt',
+    },
+    {
+      id: 105,
+      title: 'Shellcoding Level 2',
+      categories: ['Pwn', 'Reverse Engineering'],
+      difficulty: 'Easy',
+      vulnerability: 'Buffer Overflow + Executable Stack',
+      author: 'Ret2Systems',
+      impact: 'High',
+      description: 'Shellcode combined with a buffer overflow. Also evading banned characters.',
+      solutionFilePath: '/src/data/solutions/Ret2Systems/Level4Mission2.txt',
+    }
+  ]
+  },
+  {
+    id: 2,
+    name: 'Hack the Box',
     exercises: [
       {
-        id: 101,
-        title: 'Basic SQL Injection',
-        categories: ['Web'],
-        difficulty: 'Easy',
-        vulnerability: 'SQL Injection',
-        author: 'SQLRaptor',
-        impact: 'High',
-        description: 'Learn the basics of SQL injection and how to exploit vulnerable web applications.',
-        solution: 'The solution involves identifying input fields that are vulnerable to SQL injection, crafting malicious SQL queries, and bypassing authentication or extracting sensitive data from the database.'
-      },
-      {
         id: 102,
-        title: 'Advanced XSS',
-        categories: ['Web'],
-        difficulty: 'Medium',
-        vulnerability: 'Cross-Site Scripting',
-        author: 'XSSaurus',
-        impact: 'Medium',
-        description: 'Explore advanced techniques for exploiting cross-site scripting vulnerabilities in web applications.',
-        solution: 'The solution requires identifying XSS vulnerabilities, bypassing common XSS filters, and crafting payloads that can steal sensitive information or perform actions on behalf of the victim.'
-      },
-      {
-        id: 103,
-        title: 'Active Directory Enumeration',
-        categories: ['Active Directory'],
-        difficulty: 'Medium',
-        vulnerability: 'Information Disclosure',
-        author: 'ADMaster',
+        title: 'Reverse Engineering Mission 2',
+        categories: ['Pwn'],
+        difficulty: 'Easy',
+        vulnerability: 'Insecure Authentication',
+        author: 'Ret2Systems',
         impact: 'High',
-        description: 'Learn techniques for enumerating Active Directory environments and discovering potential attack vectors.',
-        solution: 'The solution involves using tools like BloodHound, PowerView, and ADExplorer to map out the AD structure, identify misconfigurations, and find potential privilege escalation paths.'
+        description: 'Simple XOR cipher to decrypt the flag.',
+        solutionFilePath:".",
+        scriptFilePath: ""
       }
     ]
   },
   {
-    id: 2,
-    name: 'TryHackMe',
+    id: 3,
+    name: 'PwnCollege',
     exercises: [
       {
         id: 201,
@@ -69,19 +112,9 @@ export const exerciseProviders: ExerciseProvider[] = [
         author: 'StackSmash',
         impact: 'Critical',
         description: 'Learn the fundamentals of buffer overflow vulnerabilities and how to exploit them.',
-        solution: 'The solution involves understanding memory layout, identifying buffer overflow vulnerabilities, crafting payloads to overwrite the return address, and gaining control of program execution.'
-      },
-      {
-        id: 202,
-        title: 'Reverse Engineering Basics',
-        categories: ['Reverse Engineering'],
-        difficulty: 'Hard',
-        vulnerability: 'Obfuscation',
-        author: 'BinaryBrontosaurus',
-        impact: 'Medium',
-        description: 'Dive into the basics of reverse engineering and learn how to analyze obfuscated binaries.',
-        solution: 'The solution requires using disassemblers and debuggers to analyze the binary, identifying and understanding obfuscation techniques, and reverse engineering the program logic to achieve the desired outcome.'
+        solutionFilePath: 'The solution involves understanding memory layout, identifying buffer overflow vulnerabilities, crafting payloads to overwrite the return address, and gaining control of program execution.'
       }
+
     ]
   }
 ];
