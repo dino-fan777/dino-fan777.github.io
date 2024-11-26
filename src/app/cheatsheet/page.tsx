@@ -8,7 +8,7 @@ import { ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { categories, cheatsheets } from "@/data/cheatsheet";
+import { categories, cheatsheets } from "../../../public/data/cheatsheet";
 
 export default function Cheatsheet() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);

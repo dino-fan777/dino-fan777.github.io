@@ -1,19 +1,21 @@
 'use client'
 
+import path from 'path'
 import { useState, useEffect } from 'react'
 import { Header } from '@/components/Header'
 import { SearchFilter } from '@/components/SearchFilter'
 import { ChevronRight, Download } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { exerciseProviders, categories, ExerciseProvider, Exercise } from '@/data/exercises'
+import { exerciseProviders, categories } from '../../../public/data/exercises'
 import { Button } from '@/components/ui/button'
+import { Solution } from '@/lib/Solution'
 
 export default function Exercises() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedProvider, setSelectedProvider] = useState<number | null>(null)
   const [selectedExercise, setSelectedExercise] = useState<number | null>(null)
-  const [solution, setSolution] = useState<string | null>(null)
+  const [solutionText, setSolutionText] = useState<string | null>(null)
 
   const filteredProviders = exerciseProviders.map(provider => ({
     ...provider,
@@ -36,38 +38,21 @@ export default function Exercises() {
     }
   }
 
-  const handleDownloadScript = async (scriptPath: string) => {
-    try {
-      window.location.href = `/api/download?path=${encodeURIComponent(scriptPath)}`;
-    } catch (error) {
-      console.error('Error downloading script:', error);
-    }
-  };
-
   useEffect(() => {
-    if (selectedExercise !== null) {
-      const exercise = filteredProviders
-        .flatMap(p => p.exercises)
-        .find(e => e.id === selectedExercise)
+    const fetchSolution = async () => {
+      if (selectedExercise !== null) {
+        const exercise = filteredProviders
+          .flatMap(provider => provider.exercises)
+          .find(ex => ex.id === selectedExercise)
 
-      if (exercise) {
-        fetch(`/api/solution?path=${encodeURIComponent(exercise.solutionFilePath)}`)
-          .then(response => response.json())
-          .then(data => {
-            if (data.content) {
-              setSolution(data.content)
-            } else {
-              setSolution('Failed to load solution: ' + (data.error || 'Unknown error'))
-            }
-          })
-          .catch(error => {
-            console.error('Error fetching solution:', error)
-            setSolution('Failed to load solution: ' + error.message)
-          })
+        if (exercise) {
+          const solution = new Solution()
+          await solution.load(exercise.solutionFilePath)
+          setSolutionText(solution.getContent())
+        }
       }
-    } else {
-      setSolution(null)
     }
+    fetchSolution()
   }, [selectedExercise, filteredProviders])
 
   return (
@@ -160,21 +145,21 @@ export default function Exercises() {
                   const exercise = filteredProviders
                     .flatMap(p => p.exercises)
                     .find(e => e.id === selectedExercise)
-                  
+
                   if (!exercise) return <p>Exercise not found</p>
 
                   return (
                     <>
                       <div className="flex justify-between items-start mb-4">
                         <h2 className="text-2xl font-bold">{exercise.title}</h2>
-                        {exercise.scriptFilePath && (
+                        {exercise.scriptFileName && exercise.scriptFileName !== 'none' && (
                           <Button
-                            onClick={() => handleDownloadScript(exercise.scriptFilePath!)}
+                            onClick={() => (window.open(path.join('https://raw.githubusercontent.com/dino-fan777/dino-fan777.github.io/refs/heads/main', exercise.scriptFileName), '_blank'))}
                             variant="outline"
                             className="flex items-center gap-2"
                           >
                             <Download className="h-4 w-4" />
-                            {exercise.scriptFilePath.split('/').pop()}
+                            {path.basename(exercise.scriptFileName)}
                           </Button>
                         )}
                       </div>
@@ -191,7 +176,7 @@ export default function Exercises() {
                       <h3 className="text-xl font-semibold mt-6 mb-2">Solution</h3>
                       <div className="bg-black p-4 rounded-lg">
                         <pre className="text-green-500 whitespace-pre-wrap font-mono text-sm">
-                          {solution || 'Loading solution...'}
+                          {solutionText || 'Loading solution...'}
                         </pre>
                       </div>
                     </>

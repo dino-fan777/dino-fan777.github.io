@@ -5,7 +5,7 @@ import { Header } from "@/components/Header";
 import { useRouter } from "next/navigation";
 import { SearchFilter } from "@/components/SearchFilter";
 import { motion, AnimatePresence } from "framer-motion";
-import { categories, guides } from "@/data/guides";
+import { categories, guides } from "../../../public/data/guides";
 
 export default function Guides() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
