@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ctfSolves, categories } from "@/data/ctf";
+import { ctfSolves, categories } from "../../../public/data/ctf";
 
 const years = Array.from(new Set(ctfSolves.map((solve) => solve.year))).sort(
   (a, b) => b - a
