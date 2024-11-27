@@ -45,7 +45,7 @@ export const exerciseProviders: ExerciseProvider[] = [
       author: 'Ret2Systems',
       impact: 'High',
       description: 'Simple buffer overflow to get the flag. Interesting info about strcmp() and fgets().',
-      solutionFilePath: '/src/data/solutions/Ret2Systems/Level3Mission1.txt',
+      solutionFilePath: '/data/solutions/Ret2Systems/Level3Mission1.txt',
       scriptFileName: 'none'
     },
     {
@@ -57,7 +57,7 @@ export const exerciseProviders: ExerciseProvider[] = [
       author: 'Ret2Systems',
       impact: 'High',
       description: 'Buffer overflow combined with manipulation of the binary execution.',
-      solutionFilePath: '/src/data/solutions/Ret2Systems/Level3Mission2.txt',
+      solutionFilePath: '/data/solutions/Ret2Systems/Level3Mission2.txt',
       scriptFileName: '/src/data/solutions/Ret2Systems/level3Mission2.py'
     },
     {
@@ -69,7 +69,7 @@ export const exerciseProviders: ExerciseProvider[] = [
       author: 'Ret2Systems',
       impact: 'High',
       description: 'Shellcode combined with a bufferoverflow.',
-      solutionFilePath: '/src/data/solutions/Ret2Systems/Level4Mission1.txt',
+      solutionFilePath: '/data/solutions/Ret2Systems/Level4Mission1.txt',
       scriptFileName: 'none'
     },
     {
@@ -81,7 +81,7 @@ export const exerciseProviders: ExerciseProvider[] = [
       author: 'Ret2Systems',
       impact: 'High',
       description: 'Shellcode combined with a buffer overflow. Also evading banned characters.',
-      solutionFilePath: '/src/data/solutions/Ret2Systems/Level4Mission2.txt',
+      solutionFilePath: '/data/solutions/Ret2Systems/Level4Mission2.txt',
       scriptFileName: 'none'
     }
   ]
