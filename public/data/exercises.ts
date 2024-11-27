@@ -1,4 +1,3 @@
-
 export interface Exercise {
   id: number;
   title: string;
@@ -34,8 +33,8 @@ export const exerciseProviders: ExerciseProvider[] = [
       author: 'Ret2Systems',
       impact: 'High',
       description: 'Simple XOR cipher to decrypt the flag.',
-      solutionFilePath: '../public/data/solutions/Ret2Systems/Level2Mission2.txt',
-      scriptFileName: '/src/data/solutions/Ret2Systems/level2mission2.py'
+      solutionFilePath: '/data/solutions/Ret2Systems/Level2Mission2.txt',
+      scriptFileName: '/data/solutions/Ret2Systems/level2mission2.py'
     },
     {
       id: 102,

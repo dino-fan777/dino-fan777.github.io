@@ -46,9 +46,17 @@ export default function Exercises() {
           .find(ex => ex.id === selectedExercise)
 
         if (exercise) {
-          const solution = new Solution()
-          await solution.load(exercise.solutionFilePath)
-          setSolutionText(solution.getContent())
+          try {
+            const response = await fetch(exercise.solutionFilePath);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const text = await response.text();
+            setSolutionText(text);
+          } catch (error) {
+            console.error("Failed to fetch solution:", error);
+            setSolutionText("Error loading solution. Please try again later.");
+          }
         }
       }
     }
