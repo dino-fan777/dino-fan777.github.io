@@ -162,7 +162,7 @@ export default function Exercises() {
                         <h2 className="text-2xl font-bold">{exercise.title}</h2>
                         {exercise.scriptFileName && exercise.scriptFileName !== 'none' && (
                           <Button
-                            onClick={() => (window.open(path.join('https://raw.githubusercontent.com/dino-fan777/dino-fan777.github.io/refs/heads/main', exercise.scriptFileName), '_blank'))}
+                            onClick={() => (window.open(path.join('', exercise.scriptFileName), '_blank'))}
                             variant="outline"
                             className="flex items-center gap-2"
                           >
