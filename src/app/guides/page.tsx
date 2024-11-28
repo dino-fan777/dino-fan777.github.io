@@ -7,20 +7,44 @@ import { SearchFilter } from "@/components/SearchFilter";
 import { motion, AnimatePresence } from "framer-motion";
 import { categories, guides } from "../../../public/data/guides";
 
+
 export default function Guides() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedGuide, setSelectedGuide] = useState<number | null>(null);
+  const [guideText, setGuideText] = useState<string | null>(null)
 
   useEffect(() => {
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     setIsLoggedIn(loggedIn);
+
     if (!loggedIn) {
       router.push("/");
+      return; // Exit early if not logged in
     }
-  }, [router]);
+  
+    const fetchGuideContent = async () => {
+      if (selectedGuide !== null) {
+        const guide = guides.find((g) => g.id === selectedGuide);
+        if (guide) {
+          try {
+            const response = await fetch(guide.guideFilePath);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const text = await response.text();
+            setGuideText(text); // Update the guide content state
+          } catch (error) {
+            console.error("Failed to fetch guide content:", error);
+            setGuideText("Error loading guide content. Please try again later.");
+          }
+        }
+      }
+    };
+    fetchGuideContent();
+  }, [router, selectedGuide]);
 
   const filteredGuides = guides.filter(
     (guide) =>
@@ -28,6 +52,7 @@ export default function Guides() {
       (selectedCategories.length === 0 ||
         selectedCategories.some((cat) => guide.categories.includes(cat)))
   );
+
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
@@ -137,13 +162,18 @@ export default function Guides() {
                       <p className="mb-2">
                         <strong>Author:</strong> {guide.author}
                       </p>
-                      <p className="mb-2">
-                        <strong>Impact:</strong> {guide.impact}
-                      </p>
                       <h3 className="text-xl font-semibold mt-6 mb-2">
                         Content
                       </h3>
                       <p>{guide.content}</p>
+                      <h3 className="text-xl font-semibold mt-6 mb-2">
+                        Explanation 
+                      </h3>
+                      <div className="bg-black p-4 rounded-lg">
+                      <pre className="text-green-500 whitespace-pre-wrap font-mono text-sm">
+                        {guideText || 'Loading guide...'}
+                        </pre>
+                        </div>
                     </>
                   );
                 })()}

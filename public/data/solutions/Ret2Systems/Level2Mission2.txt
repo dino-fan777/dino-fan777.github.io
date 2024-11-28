@@ -1,5 +1,7 @@
 Instructions explained:
 
+[+]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[+]
+
 0x400867:  push    rbp
 0x400868:  mov     rbp, rsp
 0x40086b:  mov     qword [rbp-0x18], rdi    ;  first argument after calling the fuction, valid_password(test)
@@ -35,6 +37,8 @@ Instructions explained:
 0x4008ce:  mov     eax, 0x1                 ; return 1, sucess
 0x4008d3:  pop     rbp
 0x4008d4:  retn    
+
+[-]--------------------------------------------------------------------------ASSEMBLY-------------------------------------------------------------------------[-]
 
 Decrypting encrypted password:
 

@@ -1,90 +1,36 @@
-export const guides = [
+export interface Guide {
+  id: number;
+  title: string;
+  content: string;
+  categories: string[];
+  difficulty: string;
+  vulnerability: string;
+  author: string;
+  guideFilePath: string; // New field for the solution file path
+}
+
+
+export const guides : Guide[] = [
   {
     id: 1,
-    title: "Web Exploitation Techniques",
-    content: "Learn about advanced XSS, CSRF, and SQL injection techniques.",
-    categories: ["Web"],
-    difficulty: "Advanced",
-    vulnerability: "Various",
-    author: "WebWizard",
-    impact: "High",
+    title: "Making your own shellcode",
+    content: "Create your own shellcode to better understand how it works and avoid using any restricted characters. This includes the process of converting shellcode into raw bytes while steering clear of certain system calls that may be blocked or problematic.",
+    categories: ["Pwn", "Reverse Engineering"],
+    difficulty: "Easy",
+    vulnerability: "Buffer Overflow + NX disabled",
+    author: "dino_fan",
+    guideFilePath:  "/data/guides/guide1.txt",
   },
   {
     id: 2,
-    title: "Cryptography Mastery",
+    title: "Rop Chain (in progress)",
     content:
-      "Explore modern cryptographic attack vectors and decryption strategies.",
+      "----",
     categories: ["Crypto"],
-    difficulty: "Expert",
-    vulnerability: "Cryptographic Weaknesses",
-    author: "CipherSage",
-    impact: "Critical",
-  },
-  {
-    id: 3,
-    title: "Forensics Deep Dive",
-    content:
-      "Discover advanced tools and methodologies for digital forensics investigations.",
-    categories: ["Forensics"],
-    difficulty: "Intermediate",
-    vulnerability: "Data Recovery",
-    author: "ByteDetective",
-    impact: "Medium",
-  },
-  {
-    id: 4,
-    title: "Binary Exploitation 101",
-    content:
-      "Master the basics of buffer overflows and return-oriented programming.",
-    categories: ["Pwn"],
-    difficulty: "Intermediate",
-    vulnerability: "Memory Corruption",
-    author: "StackSmasher",
-    impact: "High",
-  },
-  {
-    id: 5,
-    title: "Advanced Reverse Engineering",
-    content:
-      "Learn techniques for analyzing and understanding complex malware.",
-    categories: ["Reverse Engineering"],
-    difficulty: "Expert",
-    vulnerability: "Code Obfuscation",
-    author: "BinaryBreaker",
-    impact: "Critical",
-  },
-  {
-    id: 6,
-    title: "Network Traffic Analysis",
-    content:
-      "Dive deep into packet analysis and network protocol vulnerabilities.",
-    categories: ["Network"],
-    difficulty: "Advanced",
-    vulnerability: "Protocol Weaknesses",
-    author: "PacketPro",
-    impact: "High",
-  },
-  {
-    id: 7,
-    title: "Active Directory Security",
-    content:
-      "Explore common misconfigurations and attack vectors in Active Directory environments.",
-    categories: ["Active Directory"],
-    difficulty: "Advanced",
-    vulnerability: "Privilege Escalation",
-    author: "ADMaster",
-    impact: "Critical",
-  },
-  {
-    id: 8,
-    title: "Introduction to Command Injection",
-    content:
-      "Learn the basics of command injection vulnerabilities and how to identify them in web applications.",
-    categories: ["Web"],
-    difficulty: "Easy",
-    vulnerability: "Command Injection",
-    author: "WebNewbie",
-    impact: "High",
+    difficulty: "----",
+    vulnerability: "----",
+    author: "---",
+    guideFilePath: "---"
   },
 ];
 

@@ -8,7 +8,6 @@ import { ChevronRight, Download } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { exerciseProviders, categories } from '../../../public/data/exercises'
 import { Button } from '@/components/ui/button'
-import { Solution } from '@/lib/Solution'
 
 export default function Exercises() {
   const [searchTerm, setSearchTerm] = useState('')

@@ -25,9 +25,7 @@ If you notice the size is 23 bytes, after hours of debuging you need to align it
 
 Before our shellcode we need to add an op sled:
 
-
 payload = b'\x90' * (112 - len(shellcode)-8)
-
 
 Why the 112? Because 128 - 17 above = 111. That means our buffer ends in 111 and the RBP begins in 112. The -8 was just me testing if putting the shell between NOP works:
 
