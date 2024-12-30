@@ -1,0 +1,188 @@
+[+]--------------------------------------------------------------------------STRINGS-------------------------------------------------------------------------[+]
+
+[!]--> printf()
+
+Function: Formats and prints data to standard output.
+Risk: Vulnerable to format string vulnerabilities if user input is directly passed as the format string. 
+This can lead to arbitrary memory read/write operations, crashes, or even remote code execution.
+
+The printf function expects a fixed number of arguments corresponding to the format specifiers (%s, %d, etc.) in the format string.
+If user-controlled input is passed as the format string without validation, an attacker can:
+
+    -Use %x or %p to read arbitrary memory.
+    -Use %n to write to memory, allowing potential exploitation.
+
+Example Vulnerability:
+
++------------------------------------------------------------------------+
+| #include <stdio.h>                                                     |
+| int main() {                                                           |
+|     char user_input[100];                                              |
+|     gets(user_input);                                                  | <--- Deprecated, but used here for illustration. 
+|     printf(user_input);                                                | <--- Dangerous! Allows format string exploits.
+|     return 0;                                                          |
+| }                                                                      |
++------------------------------------------------------------------------+
+
+If the user enters something like "Hello %x %x %x", the program will print the values of memory addresses on the stack.
+
+[!]--> gets()
+
+Function: Reads a line from standard input into the buffer until a newline or EOF is encountered.
+Risk: Does not check buffer size, making it inherently unsafe and deprecated in modern C standards.
+Example Vulnerability:
+
++-------------------------------------------------------------+
+| char buffer[10];                                            |
+| gets(buffer);                                               |  <--- No size check, allowing arbitrary overflow.
++-------------------------------------------------------------+
+
+[!]--> strcpy()
+
+Function: Copies a null-terminated string from the source (src) to the destination (dest).
+Risk: Does not check the size of dest, leading to buffer overflows if the source string is larger than the destination buffer.
+Example Vulnerability:
+
+char dest[10];
+strcpy(dest, "This is a very long string"); // Overflow!
+
++--------------------------------------------+
+| char dest[10];                             |
+| strcpy(dest, "This is a very long string");| <--- Overflow!
++--------------------------------------------+
+
+[!]--> strncpy()
+
+Function: Copies up to n characters from the source string to the destination buffer.
+Risk: Does not guarantee null-termination of the destination string if the source is longer than n. 
+This can lead to undefined behavior when using the destination. We can write into memory.
+Example Vulnerability:
+
++----------------------------------------+
+| char dest[10];                         |
+| strncpy(dest, "This is a test", 10);   | <--- No null-termination if `n` == buffer size!
++----------------------------------------+
+
+[!]-->strcat()
+
+Function: Concatenates the source string to the destination string, appending the source to the end of the destination.
+Risk: Does not check the size of the destination buffer, potentially causing buffer overflows.
+Example Vulnerability:
+
++--------------------------------------------------------------+
+| char dest[10] = "Hello";                                     |
+| strcat(dest, " World!");                                     | <--- Overflow if `dest` cannot hold "Hello World!"
++--------------------------------------------------------------+
+
+[!]--> strncat()
+
+Function: Concatenates up to n characters from the source string to the destination buffer.
+Risk: Can cause buffer overflows if the size of n is improperly calculated or if the destination buffer's null terminator is overwritten.
+Example Vulnerability:
+
++-------------------------------------------------------------------+
+| char dest[10] = "Hi";                                             |
+| strncat(dest, " there, world!", 10);                              | <--- Overflow if `dest` is too small.
++-------------------------------------------------------------------+
+
+[!]--> sprintf()
+
+Function: Formats a string and writes it to the destination buffer.
+Risk: Does not check the size of the destination buffer, leading to stack-based buffer overflows.
+Example Vulnerability:
+
++-----------------------------------------------------------------------+
+| char buffer[10];                                                      |
+| sprintf(buffer, "Number: %d", 123456789);                             | <--- Overflow if output exceeds buffer size! 
++-----------------------------------------------------------------------+
+
+
+[!]--> snprintf()
+
+Function: Similar to sprintf, but limits the number of characters written to the destination buffer to prevent overflows.
+Risk: If used incorrectly with mismatched sizes or if the size of the buffer is miscalculated, it can still lead to issues.
+Example Vulnerability:
+
++----------------------------------------------------------------------------+
+| char buffer[10];                                                           | 
+| snprintf(buffer, sizeof(buffer), "Hello, World!");                         | <--- Output truncated but still risky if misunderstood.
++----------------------------------------------------------------------------+
+
+
+[!]--> vsprintf()
+
+Function: Similar to sprintf, but takes a va_list for variadic arguments.
+Risk: Suffers from the same buffer overflow issues as sprintf since it does not check buffer sizes.
+Example Vulnerability:
+
++----------------------------------------------------------------+
+| char buffer[10];                                               |
+| va_list args;                                                  |
+| va_start(args, format);                                        |
+| vsprintf(buffer, format, args);                                | <--- Overflow risk!  
+| va_end(args);                                                  |
++----------------------------------------------------------------+
+
+Mitigation Tips:
+
+    Use safer alternatives:
+        -Replace strcpy/strncpy with strlcpy (if available).
+        -Use snprintf instead of sprintf (with correct size management).
+        -Use fgets instead of gets.
+    Validate buffer sizes and ensure proper null-termination after string operations.
+    Use tools like AddressSanitizer or Valgrind to detect overflows and undefined behavior.
+
+
+[+]-----------------------------------------------------------------------FILE INPUT-------------------------------------------------------------------------[+]
+
+[!]--> read() combined with access()
+
+Function: read() reads from a file descriptor into a buffer, and access() checks if a file is accessible.
+Risk: TOCTOU vulnerability. The file path is read from the user and then checked for accessibility, but the file path is not 
+validated before being used in the access() call. An attacker could manipulate the file path between the read() and access() calls.
+Example Vulnerability:
+
++-------------------------------------------------------------------+
+| int res = read(STDIN_FILENO, file_to_read, sizeof(file_to_read)); |
+| file_to_read[res-1] = '\x00';                                     |
+|                                                                   |
+| if(!access(file_to_read, R_OK)) {                                 |
+|     ...                                                           |
+| }                                                                 |
++-------------------------------------------------------------------+
+
+[!]--> tmpfile()
+
+Function: Creates a temporary file that is automatically deleted when closed.
+Risk: Race conditions can occur if the file is not properly secured, as an attacker could create a symbolic link to the temporary file.
+Race Condition: If a file is created in an insecure directory (e.g., /tmp), an attacker could overwrite the file.
+Example Vulnerability:
+
++----------------------------+
+| FILE *tmp = tmpfile();     |
++----------------------------+
+
+[!]--> tmpnam()
+
+Function: Generates a unique filename for a temporary file.
+Risk: Insecure because the generated name can be guessed by attackers, leading to potential symlink attacks and file hijacking.
+Example Vulnerability:
+
++--------------------------------+
+| char *filename = tmpnam(NULL); |
++--------------------------------+
+
+
+[!]--> fread()
+
+Function: Reads data from a file stream into a buffer.
+Risk: Incorrect buffer size can lead to buffer overflows or incomplete data reads. Also, improper handling of return values can cause undefined behavior.
+Example Vulnerability:
+
++----------------------------------------------------------------+
+| char buffer[10];                                               |
+| FILE *file = fopen("data.txt", "r");                           |
+| fread(buffer, sizeof(buffer), 20, file);                       | <-- Overflows buffer if data exceeds 10 bytes.
++----------------------------------------------------------------+
+
+

@@ -18,7 +18,7 @@ export default function Home() {
         </p>
       </main>
       <footer className="bg-gray-800 text-center p-4">
-        <p>Access code is "irony" :D</p>
+        <p>Access code is "irony"</p>
       </footer>
     </div>
   )

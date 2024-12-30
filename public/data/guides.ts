@@ -32,6 +32,16 @@ export const guides : Guide[] = [
     author: "---",
     guideFilePath: "---"
   },
+  {
+    id: 3,
+    title: "Vulnerable C functions",
+    content: "C functions that are either vulnerable by themselvs or by combination of certain factors.",
+    categories: ["Pwn", "Reverse Engineering"],
+    difficulty: "Easy",
+    vulnerability: "Depends on the function",
+    author: "dino_fan",
+    guideFilePath: "/data/guides/guide3.txt"
+    },
 ];
 
 export const categories = [
