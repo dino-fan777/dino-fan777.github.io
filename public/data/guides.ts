@@ -42,6 +42,16 @@ export const guides : Guide[] = [
     author: "dino_fan",
     guideFilePath: "/data/guides/guide3.txt"
     },
+    {
+      id: 4,
+      title: "Memory (Stack, Heap, .bss, .data, etc)",
+      content: "A guide to the stack and some usefull tricks.",
+      categories: ["Pwn", "Reverse Engineering"],
+      difficulty: "Easy",
+      vulnerability: "Depends on the function",
+      author: "dino_fan",
+      guideFilePath: "/data/guides/guide4.txt"
+      },
 ];
 
 export const categories = [

