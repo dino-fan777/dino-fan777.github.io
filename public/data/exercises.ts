@@ -62,6 +62,18 @@ export const exerciseProviders: ExerciseProvider[] = [
     },
     {
       id: 104,
+      title: 'Memory Corruption Level 3',
+      categories: ['Pwn', 'Reverse Engineering'],
+      difficulty: 'Medium',
+      vulnerability: 'Buffer Overflow',
+      author: 'Ret2Systems',
+      impact: 'High',
+      description: 'Buffer overflow combined with manipulation of the binary execution and a little bit of math.',
+      solutionFilePath: '/data/solutions/Ret2Systems/LevelMission3.txt',
+      scriptFileName: '/src/data/solutions/Ret2Systems/level3Mission3.py'
+    },
+    {
+      id: 105,
       title: 'Shellcoding Level 1',
       categories: ['Pwn', 'Reverse Engineering'],
       difficulty: 'Easy',
@@ -73,17 +85,53 @@ export const exerciseProviders: ExerciseProvider[] = [
       scriptFileName: 'none'
     },
     {
-      id: 105,
+      id: 106,
       title: 'Shellcoding Level 2',
       categories: ['Pwn', 'Reverse Engineering'],
-      difficulty: 'Easy',
+      difficulty: 'Medium',
       vulnerability: 'Buffer Overflow + Executable Stack',
       author: 'Ret2Systems',
       impact: 'High',
       description: 'Shellcode combined with a buffer overflow. Also evading banned characters.',
       solutionFilePath: '/data/solutions/Ret2Systems/Level4Mission2.txt',
+      scriptFileName: '/src/data/solutions/Ret2Systems/Level4Mission2.py'
+    },
+    {
+      id: 107,
+      title: 'Shellcoding Level 3',
+      categories: ['Pwn', 'Reverse Engineering'],
+      difficulty: 'Medium',
+      vulnerability: 'Buffer Overflow + Executable Stack',
+      author: 'Ret2Systems',
+      impact: 'High',
+      description: 'Shellcode combined with a buffer overflow. Also evading banned characters',
+      solutionFilePath: '/data/solutions/Ret2Systems/Level4Mission3.txt',
       scriptFileName: 'none'
-    }
+      },
+      {
+        id: 108,
+        title: 'Mission 0',
+        categories: ['Pwn', 'Reverse Engineering'],
+        difficulty: 'Medium',
+        vulnerability: 'Assembly + Shellcode + Bufferoverflow',
+        author: 'Ret2Systems',
+        impact: 'High',
+        description: 'All categories above combined',
+        solutionFilePath: '/data/solutions/Ret2Systems/Mission0.txt',
+        scriptFileName: '/src/solutions/Ret2Systems/Mission0.py'
+      },
+      {
+        id: 109,
+        title: 'Stack Cookies',
+        categories: ['Pwn', 'Reverse Engineering'],
+        difficulty: 'Medium',
+        vulnerability: 'Buffer Overflow and stack cookie bypass',
+        author: 'Ret2Systems',
+        impact: 'High',
+        description: 'Stack cookies are used to prevent buffer overflow attacks. This challenge will teach you how to avoid them',
+        solutionFilePath: '/data/solutions/Ret2Systems/Level5Mission1.txt',
+        scriptFileName: '/src/solutions/Ret2Systems/Level5Mission1.py'
+      },
   ]
   },
   {

